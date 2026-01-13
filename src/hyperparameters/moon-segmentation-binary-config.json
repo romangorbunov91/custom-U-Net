@@ -1,0 +1,42 @@
+{
+  "model": {
+    "name": "custom_U-Net",
+    "layers_num": 3,
+    "block_size": 2,
+    "activation": "ReLU"
+  },
+  "dataset": {
+    "name": "moon-segmentation-binary",
+    "img_size": [3, 720, 480],
+    "selected_classes": [
+      "n01910747",
+      "n02124075",
+      "n03854065",
+      "n02403003",
+      "n09256479",
+      "n02415577",
+      "n02814533",
+      "n04285008",
+      "n03796401",
+      "n04254777"
+    ]
+  },
+  "device": "cuda",
+  "epochs": 30,
+  "data": {
+    "data_path": "./datasets/",
+    "workers": 4,
+    "batch_size": 500
+  },
+  "solver": {
+    "type": "Adam",
+    "base_lr": 0.001,
+    "weight_decay": 0.0001
+  },
+  "checkpoints": {
+    "save_policy": "best",
+    "save_dir": "./checkpoints/",
+    "logs_dir": "./train_logs/",
+    "early_stop_number": 0
+  }
+}
