@@ -15,7 +15,7 @@ from datasets.TinyImageNetDataset import TinyImageNetDataset
 
 # Import Model.
 from models.model_utilizer import ModelUtilizer
-from models.model_structure import EfficientHybrid5M
+from models.backbone import customResNet18
 
 # Setting seeds.
 def worker_init_fn(worker_id):
@@ -79,8 +79,12 @@ class ResNet18Trainer(object):
         self.loss = nn.CrossEntropyLoss().to(self.device)
         
         img_size = self.configer.get('dataset', 'img_size')
-        self.net = EfficientHybrid5M(
-            num_classes = self.n_classes
+        self.net = customResNet18(
+            num_classes = self.n_classes,
+            layers_config = self.configer.get("model", "layers_num")*[self.configer.get("model", "block_size")],
+            activation = self.configer.get("model", "activation").lower(),
+            in_channels = img_size[0],
+            layer0_channels = 256 // 2**(self.configer.get("model", "layers_num") - 1)
         )
 
         # Initializing training.

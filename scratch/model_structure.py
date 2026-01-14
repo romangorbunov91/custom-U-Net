@@ -1,9 +1,5 @@
 import torch.nn as nn
 
-# ----------------------------
-# Вспомогательные блоки
-# ----------------------------
-
 class SqueezeAndExcitation(nn.Module):
     def __init__(self, channels, reduction=4):
         super().__init__()
@@ -50,10 +46,6 @@ class ResidualDSBlock(nn.Module):
     def forward(self, x):
         return self.conv(x) + self.skip(x)
 
-# ----------------------------
-# Лёгкий Transformer
-# ----------------------------
-
 class LightSelfAttention(nn.Module):
     def __init__(self, dim, num_heads=4, qkv_bias=False, attn_drop=0.0, proj_drop=0.0):
         super().__init__()
@@ -99,10 +91,6 @@ class LightTransformerBlock(nn.Module):
         x = x + self.attn(self.norm1(x))
         x = x + self.mlp(self.norm2(x))
         return x
-
-# ----------------------------
-# Основная модель
-# ----------------------------
 
 class EfficientHybrid5M(nn.Module):
     def __init__(self,

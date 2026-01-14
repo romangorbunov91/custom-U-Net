@@ -4,7 +4,7 @@
 ## Датасеты
 
 ### Tiny ImageNet-200
-Создан датакласс [TinyImageNetDataset.py](src\datasets\TinyImageNetDataset.py), наследующий от `torch.utils.data.Dataset` следующие методы:
+Создан датакласс [TinyImageNetDataset.py](src/datasets/TinyImageNetDataset.py), наследующий от `torch.utils.data.Dataset` следующие методы:
 - `__init__`: инициализация путей к данным и аннотациям, загрузка тренировочного и валидационного датасетов по выбранным классам;
 - `__len__`: возврат количества примеров в датасете;
 - `__getitem__`: загрузка и возврат одного примера (изображение + метка).
@@ -38,7 +38,7 @@ self.val_transforms = transforms.Compose([
 
 ### 2.4. Скрипт обучения
 
-В [model_structure.py](src\models\model_structure.py) реализован `class customResNet18` с возможностью инициализации архитектуры модели под следующие входные параметры:
+В [model_structure.py](src/models/model_structure.py) реализован `class customResNet18` с возможностью инициализации архитектуры модели под следующие входные параметры:
 - `num_classes` - количество классов на выходе; например, `num_classes=10`;
 - `layers_config` - слои модели в формате списка; например, `[2, 2, 2, 2]` - `"layers_num": 4`, `"block_size": 2`;
 - `activation` - функция активации (`ReLU`, `LeakyReLU`, `ELU`, или `GELU`);
@@ -46,22 +46,22 @@ self.val_transforms = transforms.Compose([
 - `layer0_channels` - количество каналов на входе первого базового слоя.
 
 #### Конфигурирование проекта
-Гиперпараметры задаются в файле [config.json](src\hyperparameters\config.json), включая:
+Гиперпараметры задаются в файле [config.json](src/hyperparameters/config.json), включая:
 - архитектура модели: `layers_num`, `block_size`, `activation`;
 - выбранные классы датасета: `selected_classes`;
 - параметры обучения: `epochs`, `batch_size`, `solver`;
 - политика обучения: `save_policy` - "all", "best" (политика "early_stop" выбирается установкой параметра "early_stop_number" > 0).
 
 #### Обучение
-Обучение реализовано в [train.py](src\train.py) в виде класса `ResNet18Trainer` со следующими методами:
+Обучение реализовано в [train.py](src/train.py) в виде класса `ResNet18Trainer` со следующими методами:
 - `__init__` - инициализация переменных класса в соответствии с гиперпараметрами из файла конфигурации проекта;
 - `init_model` - установка функции ошибки, инициализация/загрузка модели, загрузка датасета;
 - `__train` - обучение по батчам;
 - `__val` - валидация по батчам;
 - `train` - основной цикл обучения/валидации по эпохам;
-- `update_metrics` - аккумулирование losses/accuracy посредством [average_meter.py](src\utils\average_meter.py).
+- `update_metrics` - аккумулирование losses/accuracy посредством [average_meter.py](src/utils/average_meter.py).
 
-Рекомендуется работать с моделью из терминала посредством [main.py](src\main.py).
+Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
 python src\main.py --hypes src\hyperparameters\tiny-imagenet-200-config.json
 ```
