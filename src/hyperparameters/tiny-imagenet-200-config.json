@@ -2,7 +2,7 @@
   "model": {
     "name": "customResNet18",
     "img_size": [3, 64, 64],
-    "layers_num": 4,
+    "layers_num": 3,
     "block_size": 2
   },
   "dataset": {
@@ -22,7 +22,7 @@
     ]
   },
   "device": "cuda",
-  "epochs": 1,
+  "epochs": 30,
   "data": {
     "data_path": "./datasets/",
     "workers": 4,
