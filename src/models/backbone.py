@@ -1,21 +1,6 @@
 import torch
 import torch.nn as nn
 
-class SqueezeExcit(nn.Module):
-    def __init__(self, channels, reduction=4):
-        super().__init__()
-        self.fc = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(channels, channels // reduction, bias=False),
-            nn.SiLU(inplace=True),
-            nn.Linear(channels // reduction, channels, bias=False),
-            nn.Sigmoid()
-        )
-    def forward(self, x):
-        scale = self.fc(x).unsqueeze(-1).unsqueeze(-1)
-        return x * scale
-
 class BasicBlock(nn.Module):
     """
     Базовый блок ResNet с residual connection.
@@ -59,7 +44,6 @@ class BasicBlock(nn.Module):
             bias=False
         )
         self.bn2 = nn.BatchNorm2d(out_channels)
-        self.se = SqueezeExcit(out_channels)
 
         self.downsample = nn.Identity()
         if (stride != 1) or (in_channels != out_channels):
@@ -77,8 +61,6 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.se(out)
-
         out += identity
         out = self.activation(out)
         return out
