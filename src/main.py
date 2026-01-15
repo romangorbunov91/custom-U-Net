@@ -42,7 +42,6 @@ if __name__ == "__main__":
         f"mdl_"
         f"{str(configer.get('model', 'layers_num'))}x"
         f"{str(configer.get('model', 'block_size'))}_"
-        f"{configer.get('model', 'activation')}_"
         f"{configer.get('solver', 'type')}"
     )
     
@@ -69,7 +68,6 @@ if __name__ == "__main__":
                 "name": configer.get("model", "name"),
                 "layers_num": configer.get("model", "layers_num"),
                 "block_size": configer.get("model", "block_size"),
-                "activation": configer.get("model", "activation"),
                 "param_count": model_param_count
                 },
             "dataset": {

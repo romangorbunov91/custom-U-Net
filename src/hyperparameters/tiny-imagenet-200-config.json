@@ -3,8 +3,7 @@
     "name": "customResNet18",
     "img_size": [3, 64, 64],
     "layers_num": 4,
-    "block_size": 2,
-    "activation": "ReLU"
+    "block_size": 2
   },
   "dataset": {
     "name": "tiny-imagenet-200",
