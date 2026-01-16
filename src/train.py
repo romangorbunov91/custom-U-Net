@@ -6,12 +6,17 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+from sklearn.model_selection import train_test_split
+
 # Import Utils.
 from torch.utils.data import DataLoader
 from utils.average_meter import AverageMeter
 
 # Import Datasets.
 from datasets.TinyImageNetDataset import TinyImageNetDataset
+from datasets.MoonSegmentBinaryDataset import MoonSegmentationDataset
 
 # Import Model.
 from models.model_utilizer import ModelUtilizer
@@ -101,12 +106,12 @@ class ResNet18Trainer(object):
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model size: {self.model_size}")
         mdl_img_size = self.configer.get('model', 'img_size')
-        # Selecting Dataset and DataLoader
+        # Selecting Dataset and DataLoader.
+        mean_norm = [0.485, 0.456, 0.406]
+        std_norm = [0.229, 0.224, 0.225]
         if self.dataset == "tiny-imagenet-200":
             Dataset = TinyImageNetDataset
-            
-            normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            
+
             self.train_transforms = transforms.Compose([
                 transforms.Resize(tuple([int(img_size[1] * 1.125)]*2)),
                 transforms.RandomResizedCrop(mdl_img_size[1], scale=(0.8, 1.0)),
@@ -114,41 +119,109 @@ class ResNet18Trainer(object):
                 transforms.RandomRotation(10),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
                 transforms.ToTensor(),
-                normalize,
+                transforms.Normalize(mean=mean_norm, std=std_norm)
             ])
 
             self.val_transforms = transforms.Compose([
                 transforms.Resize(tuple(mdl_img_size[1:])),
                 transforms.ToTensor(),
-                normalize,
+                transforms.Normalize(mean=mean_norm, std=std_norm)
             ])
-            
+        elif self.dataset == "moon-segmentation-binary":
+            self.train_augmentation = A.Compose([
+                A.Resize(256, 256),
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.RandomRotate90(p=0.5),
+                A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=45, p=0.5),
+                A.OneOf([
+                    A.GaussNoise(var_limit=(10.0, 50.0)),
+                    A.GaussianBlur(blur_limit=(3, 7)),
+                    A.MedianBlur(blur_limit=5),
+                ], p=0.3),
+                A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+            ])
+
+            self.val_augmentation = A.Compose([
+                A.Resize(256, 256),
+            ])
+
+            self.preprocessing = A.Compose([
+                A.Normalize(mean=mean_norm, std=std_norm),
+                ToTensorV2(),
+            ])
+                        
         else:
             raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
 
         # Setting Dataloaders.
-        self.train_loader = DataLoader(
-            Dataset(
-                self.data_path,
-                split="train",
-                transform=self.train_transforms,
-                selected_classes=self.selected_classes
-                ),
-            batch_size=self.configer.get("data", "batch_size"),
-            shuffle=True,
-            num_workers=self.configer.get("data", "workers"))
-        
-        self.val_loader = DataLoader(
-            Dataset(
-                self.data_path,
-                split="val",
-                transform=self.val_transforms,
-                selected_classes=self.selected_classes
-                ),
-            batch_size=self.configer.get("data", "batch_size"),
-            shuffle=False,
-            num_workers=self.configer.get("data", "workers"))
+        if self.dataset == "tiny-imagenet-200":
+            self.train_loader = DataLoader(
+                Dataset(
+                    self.data_path,
+                    split="train",
+                    transform=self.train_transforms,
+                    selected_classes=self.selected_classes
+                    ),
+                batch_size=self.configer.get("data", "batch_size"),
+                shuffle=True,
+                num_workers=self.configer.get("data", "workers"))
+            
+            self.val_loader = DataLoader(
+                Dataset(
+                    self.data_path,
+                    split="val",
+                    transform=self.val_transforms,
+                    selected_classes=self.selected_classes
+                    ),
+                batch_size=self.configer.get("data", "batch_size"),
+                shuffle=False,
+                num_workers=self.configer.get("data", "workers"))
+        elif self.dataset == "moon-segmentation-binary":
+            train_ids, val_ids = train_test_split(all_images, test_size=0.2, random_state=42)
 
+            print(f"Train: {len(train_ids)} изображений")
+            print(f"Val: {len(val_ids)} изображений")
+
+            train_dataset = MoonSegmentationDataset(
+                root_dir=DATA_ROOT,
+                image_folder='render',
+                mask_folder='ground',
+                image_ids=train_ids,
+                augmentation=train_augmentation,
+                preprocessing=preprocessing
+            )
+
+            val_dataset = MoonSegmentationDataset(
+                root_dir=DATA_ROOT,
+                image_folder='render',
+                mask_folder='ground',
+                image_ids=val_ids,
+                augmentation=val_augmentation,
+                preprocessing=preprocessing
+            )
+
+            BATCH_SIZE = 4
+            NUM_WORKERS = 0
+
+            train_loader = DataLoader(
+                train_dataset, 
+                batch_size=BATCH_SIZE, 
+                shuffle=True, 
+                num_workers=NUM_WORKERS,
+                pin_memory=True
+            )
+
+            val_loader = DataLoader(
+                val_dataset, 
+                batch_size=BATCH_SIZE, 
+                shuffle=False, 
+                num_workers=NUM_WORKERS,
+                pin_memory=True
+            )
+        else:
+            raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
+        
         print(f"Train size: {len(self.train_loader.dataset)}")
         print(f"Val size: {len(self.val_loader.dataset)}")
         print(f"Number of classes: {len(self.train_loader.dataset.class_names)}")
