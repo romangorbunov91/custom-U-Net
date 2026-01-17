@@ -3,19 +3,20 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-from typing import List, Tuple, Optional
+from pathlib import Path
+from typing import Union, List, Tuple, Optional
 
 class TinyImageNetDataset(Dataset):
     def __init__(
         self,
-        data_path,
+        data_path: Union[str, Path],
         split: str = 'train',
         transform: Optional[transforms.Compose] = None,
         selected_classes: Optional[List[str]] = None
         ):
         super().__init__()
         
-        self.data_path = data_path
+        self.data_path = Path(data_path)
         self.transform = transform
         self.selected_classes = selected_classes
         
@@ -73,7 +74,7 @@ class TinyImageNetDataset(Dataset):
         else:
             raise ValueError("'split' must be 'train' or 'val'")
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
