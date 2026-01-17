@@ -6,6 +6,8 @@
   },
   "dataset": {
     "name": "moon-segmentation-binary",
+    "img_prefix": "render",
+    "mask_prefix": "ground",
     "img_size": [3, 720, 480]
   },
   "device": "cuda",

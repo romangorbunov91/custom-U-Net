@@ -1,63 +1,55 @@
-import os
 import numpy as np
 import torch
 import cv2
 from torch.utils.data import Dataset
 import albumentations as A
-from sklearn.model_selection import train_test_split
-from typing import List, Tuple, Optional
+from pathlib import Path
+from typing import Union, List, Tuple, Optional
 
 class MoonSegmentationDataset(Dataset):
     def __init__(
         self,
-        data_path,
-        split: str = 'train',
-        img_prefix: str = 'render',
-        mask_prefix: str = 'ground',
+        data_path: Union[str, Path],
+        samples: List[str],
+        img_prefix: str,
+        mask_prefix: str,
         augmentation: Optional[A.Compose] = None,
-        preprocessing: Optional[A.Compose] = None,
-        seed = None
+        preprocessing: Optional[A.Compose] = None
         ):
         super().__init__()
         
-        self.data_path = data_path
+        self.data_path = Path(data_path)
         self.img_prefix = img_prefix
         self.mask_prefix = mask_prefix
         self.augmentation = augmentation
         self.preprocessing = preprocessing
 
-        self.img_folder = self.img_prefix + '/'
-        self.mask_folder = self.mask_prefix + '/'
+        self.img_dir = self.data_path / self.img_prefix
+        self.mask_dir = self.data_path / self.mask_prefix
         
-        all_images = [img_no_ext.replace(self.img_prefix, '') for img_no_ext in
-            [img.replace('.png', '') for img in os.listdir(self.data_path / self.img_folder) if img.endswith('.png')]
-        ]
-        train_images, val_images = train_test_split(
-            all_images,
-            test_size=0.2,
-            random_state = seed)
+        self.samples = samples
         
-        if split == 'train':
-            self.samples = train_images
-        elif split == 'val':
-            self.samples = val_images
-        else:
-            raise ValueError("'split' must be 'train' or 'val'")
-        
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.samples)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         
         img_id = self.samples[idx]
         
-        img_path = self.data_path / (self.img_folder + self.img_prefix + f"{img_id}.png")
-        mask_path = self.data_path / (self.mask_folder + self.mask_prefix + f"{img_id}.png")
+        img_path = self.img_dir / (self.img_prefix + f"{img_id}.png")
+        mask_path = self.mask_dir / (self.mask_prefix + f"{img_id}.png")
+
+        if not img_path.exists():
+            raise FileNotFoundError(f"Image not found: {img_path}")
+        if not mask_path.exists():
+            raise FileNotFoundError(f"Mask not found: {mask_path}")
         
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)      
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+
+        assert np.all((mask == 0) | (mask == 255)), "Mask must be binary (0 or 255)"
         # Бинарная маска [0, 1]: 0 = фон, 1 = камни.
-        mask = (mask > 0).astype(np.float32)
+        mask = (mask == 255).astype(np.float32)
         
         # Аугментации.
         if self.augmentation:
@@ -69,4 +61,8 @@ class MoonSegmentationDataset(Dataset):
             sample = self.preprocessing(image=img, mask=mask)
             img, mask = sample['image'], sample['mask']        
         
+        # Ensure channels-first format for PyTorch
+        img = torch.from_numpy(img).permute(2, 0, 1).float()  # (H, W, C) → (C, H, W)
+        mask = torch.from_numpy(mask).unsqueeze(0)           # (H, W) → (1, H, W)
+
         return img, mask

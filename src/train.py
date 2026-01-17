@@ -1,7 +1,9 @@
+import os
 from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -335,7 +337,12 @@ class UNetTrainer(object):
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
                 A.RandomRotate90(p=0.5),
-                A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=45, p=0.5),
+                A.Affine(
+                    translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
+                    scale=(0.9, 1.1),
+                    rotate=(-45, 45),
+                    p=0.5
+                ),
                 A.OneOf([
                     A.GaussNoise(var_limit=(10.0, 50.0)),
                     A.GaussianBlur(blur_limit=(3, 7)),
@@ -357,15 +364,25 @@ class UNetTrainer(object):
 
         # Setting Dataloaders.
         if self.dataset == "moon-segmentation-binary":
+            img_prefix = self.configer.get('dataset', 'img_prefix')
+            mask_prefix = self.configer.get('dataset', 'mask_prefix')
+            img_folder = img_prefix + '/'
+            all_images = [img_no_ext.replace(img_prefix, '') for img_no_ext in
+                [img.replace('.png', '') for img in os.listdir(self.data_path / img_folder) if img.endswith('.png')]
+            ]
+            train_images, val_images = train_test_split(
+                all_images,
+                test_size=0.2,
+                random_state = self.configer.seed)
+            
             self.train_loader = DataLoader(
                 MoonSegmentationDataset(
                     data_path = self.data_path,
-                    split = 'train',
-                    img_prefix = 'render',
-                    mask_prefix = 'ground',
+                    samples = train_images,
+                    img_prefix = img_prefix,
+                    mask_prefix = mask_prefix,
                     augmentation = self.train_augmentation,
-                    preprocessing = self.preprocessing,
-                    seed = self.configer.seed
+                    preprocessing = self.preprocessing
                     ), 
                 batch_size=self.configer.get("data", "batch_size"),
                 shuffle=True,
@@ -375,12 +392,11 @@ class UNetTrainer(object):
             self.val_loader = DataLoader(
                 MoonSegmentationDataset(
                     data_path = self.data_path,
-                    split = 'val',
-                    img_prefix = 'render',
-                    mask_prefix = 'ground',
+                    samples = val_images,
+                    img_prefix = img_prefix,
+                    mask_prefix = mask_prefix,
                     augmentation = self.val_augmentation,
-                    preprocessing = self.preprocessing,
-                    seed = self.configer.seed
+                    preprocessing = self.preprocessing
                     ), 
                 batch_size=self.configer.get("data", "batch_size"),
                 shuffle=False,
