@@ -37,7 +37,7 @@ if __name__ == "__main__":
     torch.autograd.set_detect_anomaly(True)
     configer = Configer(args)
     configer.device = configer.get("device").lower() if torch.cuda.is_available() else 'cpu'
-
+    configer.seed = SEED
     configer.output_file_name = (
         f"mdl_"
         f"{str(configer.get('model', 'layers_num'))}x"

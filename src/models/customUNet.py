@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from typing import List, Tuple, Optional
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -19,7 +21,11 @@ class DoubleConv(nn.Module):
 
 class customUNet(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=1, features=[64, 128, 256, 512]):
+    def __init__(self,
+                in_channels = 3,
+                out_channels = 1,
+                features: Optional[List[int]] = [64, 128, 256, 512]
+                ):
         super(customUNet, self).__init__()
         
         self.encoder_blocks = nn.ModuleList()

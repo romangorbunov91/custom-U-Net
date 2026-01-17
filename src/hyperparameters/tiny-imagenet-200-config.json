@@ -1,7 +1,7 @@
 {
   "model": {
     "name": "customResNet18",
-    "img_size": [3, 64, 64],
+    "img_size": [3, 128, 128],
     "layers_num": 3,
     "block_size": 2
   },
