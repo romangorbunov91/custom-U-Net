@@ -16,7 +16,6 @@ class TinyImageNetDataset(Dataset):
         super().__init__()
         
         self.data_path = data_path
-        self.split = split
         self.transform = transform
         self.selected_classes = selected_classes
         

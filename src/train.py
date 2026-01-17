@@ -258,7 +258,7 @@ class UNetTrainer(object):
 
         #: str: Type of dataset.
         self.dataset = self.configer.get("dataset", "name").lower()
-        self.data_path = Path(self.configer.get("data", "data_path")) / self.configer.get("dataset", "name")
+        self.data_path = Path(self.configer.get("data", "data_path")) / (self.configer.get("dataset", "name") + '/images')
         
         # DataLoaders.
         self.train_loader = None
@@ -275,12 +275,9 @@ class UNetTrainer(object):
         self.epoch = None
         self.optimizer = None
         self.loss = None
-        self.train_transforms = None
-        self.val_transforms = None
-        
-        #: int: Chosen classes to work with.
-        self.selected_classes = self.configer.get("dataset", "selected_classes")
-        self.n_classes = len(self.selected_classes)
+        self.train_augmentation = None
+        self.val_augmentation = None
+        self.preprocessing = None
         
         # Train and val losses.
         self.losses = {
@@ -334,7 +331,7 @@ class UNetTrainer(object):
         # Selecting Dataset and DataLoader.
         if self.dataset == "moon-segmentation-binary":
             self.train_augmentation = A.Compose([
-                A.Resize(tuple(mdl_img_size[1:])),
+                A.Resize(*mdl_img_size[1:]),
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
                 A.RandomRotate90(p=0.5),
@@ -348,7 +345,7 @@ class UNetTrainer(object):
             ])
 
             self.val_augmentation = A.Compose([
-                A.Resize(tuple(mdl_img_size[1:])),
+                A.Resize(*mdl_img_size[1:]),
             ])
 
             self.preprocessing = A.Compose([
@@ -364,8 +361,8 @@ class UNetTrainer(object):
                 MoonSegmentationDataset(
                     data_path = self.data_path,
                     split = 'train',
-                    img_folder = 'render',
-                    mask_folder = 'ground',
+                    img_prefix = 'render',
+                    mask_prefix = 'ground',
                     augmentation = self.train_augmentation,
                     preprocessing = self.preprocessing,
                     seed = self.configer.seed
@@ -379,8 +376,8 @@ class UNetTrainer(object):
                 MoonSegmentationDataset(
                     data_path = self.data_path,
                     split = 'val',
-                    img_folder = 'render',
-                    mask_folder = 'ground',
+                    img_prefix = 'render',
+                    mask_prefix = 'ground',
                     augmentation = self.val_augmentation,
                     preprocessing = self.preprocessing,
                     seed = self.configer.seed
@@ -394,7 +391,6 @@ class UNetTrainer(object):
         
         print(f"Train size: {len(self.train_loader.dataset)}")
         print(f"Val size: {len(self.val_loader.dataset)}")
-        print(f"Number of classes: {len(self.train_loader.dataset.class_names)}")
               
     def __train(self):
         """Train function for every epoch."""

@@ -50,8 +50,6 @@ class customUNet(nn.Module):
 
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
         
-        total_params = sum(p.numel() for p in self.parameters())
-        print(f"Параметров: {total_params:,}")
         print(f"Уровней encoder: {len(features)}")
         print(f"Конфигурация каналов: {features}")
     

@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 import argparse
 
-from train import ResNet18Trainer
+from train import ResNet18Trainer, UNetTrainer
 from utils.configer import Configer
 
 SEED = 1991
@@ -45,7 +45,13 @@ if __name__ == "__main__":
         f"{configer.get('solver', 'type')}"
     )
     
-    model = ResNet18Trainer(configer)
+    if configer.get('dataset', 'name') == "tiny-imagenet-200":
+        model = ResNet18Trainer(configer)
+    elif configer.get('dataset', 'name') == "moon-segmentation-binary":
+        model = UNetTrainer(configer)
+    else:
+        raise NotImplementedError(f"Dataset not supported: {configer.get('dataset', 'name')}")
+    
     model.init_model()
     train_history, train_num, val_num, class_num, model_param_count, model_struct = model.train()
 
