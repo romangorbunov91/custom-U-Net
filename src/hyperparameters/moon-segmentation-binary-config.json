@@ -15,7 +15,7 @@
   "data": {
     "data_path": "./datasets/",
     "workers": 4,
-    "batch_size": 500
+    "batch_size": 100
   },
   "solver": {
     "type": "Adam",
