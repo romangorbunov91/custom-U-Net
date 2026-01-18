@@ -21,7 +21,7 @@ from datasets.MoonSegmentBinaryDataset import MoonSegmentationDataset
 
 # Import Model.
 from models.model_utilizer import ModelUtilizer
-from models.backbone import customResNet18
+from models.customResNet import customResNet
 from models.customUNet import customUNet
 
 # Setting seeds.
@@ -89,7 +89,7 @@ class ResNet18Trainer(object):
         self.loss = nn.CrossEntropyLoss().to(self.device)
         
         img_size = self.configer.get('dataset', 'img_size')
-        self.net = customResNet18(
+        self.net = customResNet(
             num_classes = self.n_classes,
             layers_config = self.configer.get("model", "layers_num")*[self.configer.get("model", "block_size")],
             in_channels = img_size[0],
@@ -337,6 +337,13 @@ class UNetTrainer(object):
             print(f"Resuming training from epoch {self.epoch} using {self.configer.get('solver', 'type')}.")
             self.optimizer.load_state_dict(optim_dict)
         
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, 
+            mode='max',
+            factor=0.5, 
+            patience=3, 
+        )
+
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model size: {self.model_size}")
         mdl_img_size = self.configer.get('model', 'img_size')
@@ -384,7 +391,7 @@ class UNetTrainer(object):
             train_images, val_images = train_test_split(
                 all_images,
                 test_size=0.2,
-                random_state = self.configer.seed)
+                random_state = self.configer.get('seed'))
             
             self.train_loader = DataLoader(
                 MoonSegmentationDataset(
@@ -478,15 +485,18 @@ class UNetTrainer(object):
             self.epoch + 1)
 
         if ret < 0:
-            return -1
-        return ret
+            return -1, dice
+        return ret, dice
 
     def train(self):        
         for n in range(self.configer.get("epochs")):
             print("Starting epoch {} of {}.".format(self.epoch + 1, self.configer.get("epochs") + self.epoch_init))
             self.__train()
-            ret = self.__val()
+            ret, val_dice = self.__val()
             
+            if self.scheduler is not None:
+                self.scheduler.step(val_dice)
+
             self.train_history["epoch"].append(self.epoch + 1)
             self.train_history["train_loss"].append(self.losses["train"].avg)
             self.train_history["train_dice"].append(self.dice["train"].avg)
@@ -500,8 +510,14 @@ class UNetTrainer(object):
             self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
             
             prefix = f"Epoch {self.train_history['epoch'][-1]:2d} | "
-            print(f"{prefix}Train Loss: {self.train_history['train_loss'][-1]:.4f}, Accuracy: {self.train_history['train_accuracy'][-1]:.4f}")
-            print(f"{' ' * len(prefix)}Val   Loss: {self.train_history['val_loss'][-1]:.4f}, Accuracy: {self.train_history['val_accuracy'][-1]:.4f}")
+            print(f"{prefix}Train Loss: {self.train_history['train_loss'][-1]:.4f}, "
+                  f"Dice: {self.train_history['train_dice'][-1]:.4f}, "
+                  f"IoU: {self.train_history['train_iou'][-1]:.4f}, "
+                  f"Accuracy: {self.train_history['train_accuracy'][-1]:.4f}")
+            print(f"{' ' * len(prefix)}Val   Loss: {self.train_history['val_loss'][-1]:.4f}, "
+                  f"Dice: {self.train_history['val_dice'][-1]:.4f}, "
+                  f"IoU: {self.train_history['val_iou'][-1]:.4f}, "
+                  f"Accuracy: {self.train_history['val_accuracy'][-1]:.4f}")
             
             self.losses["train"].reset()
             self.dice["train"].reset()
