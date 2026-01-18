@@ -65,7 +65,7 @@ class BasicBlock(nn.Module):
         out = self.activation(out)
         return out
 
-class customResNet(nn.Module):
+class customResNetConcept(nn.Module):
     
     def __init__(self,
                  block,
@@ -165,14 +165,14 @@ class customResNet(nn.Module):
         x = self.fc(x)
         return x
     
-def customResNet18(
+def customResNet(
     num_classes: int,
     layers_config,
     in_channels: int,
     layer0_channels: int,
     zero_init_residual=False
     ):
-    return customResNet(
+    return customResNetConcept(
         block = BasicBlock,
         layers_config = layers_config,
         in_channels = in_channels,

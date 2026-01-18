@@ -1,31 +1,6 @@
 {
-  "model": {
-    "name": "customUNet",
-    "img_size": [3, 128, 128],
-    "feature_list": [32, 64, 128, 256]
-  },
-  "dataset": {
-    "name": "moon-segmentation-binary",
-    "img_prefix": "render",
-    "mask_prefix": "ground",
-    "img_size": [3, 720, 480]
-  },
-  "device": "cuda",
-  "epochs": 30,
-  "data": {
-    "data_path": "./datasets/",
-    "workers": 4,
-    "batch_size": 100
-  },
-  "solver": {
-    "type": "Adam",
-    "base_lr": 0.001,
-    "weight_decay": 0.0001
-  },
-  "checkpoints": {
-    "save_policy": "best",
-    "save_dir": "./checkpoints/",
-    "logs_dir": "./train_logs/",
-    "early_stop_number": 0
-  }
+  "dataset_name": "moon-segmentation-binary",
+  "img_prefix": "render",
+  "mask_prefix": "ground",
+  "img_size": [3, 720, 480]
 }

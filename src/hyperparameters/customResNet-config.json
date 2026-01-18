@@ -1,0 +1,17 @@
+{
+  "model_name": "customResNet",
+  "layers_num": 3,
+  "block_size": 2,
+  "output_channels": 256,
+  "checkpoints_save_policy": "best",
+  "checkpoints_metric": "val_accuracy",
+  "early_stop_number": 0,
+  "dataset_name": "tiny-imagenet-200",
+  "workers": 4,
+  "input_size": [3, 128, 128],
+  "base_lr": 0.001,
+  "weight_decay": 0.0001,
+  "solver_type": "Adam",
+  "batch_size": 500,
+  "epochs": 10
+}

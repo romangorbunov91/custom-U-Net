@@ -38,15 +38,16 @@ self.val_transforms = transforms.Compose([
 
 ### 2.4. Скрипт обучения
 
-В [model_structure.py](src/models/model_structure.py) реализован `class customResNet18` с возможностью инициализации архитектуры модели под следующие входные параметры:
+В [???.py](src/models/???.py) реализован `class customResNet18` с возможностью инициализации архитектуры модели под следующие входные параметры:
 - `num_classes` - количество классов на выходе; например, `num_classes=10`;
-- `layers_config` - слои модели в формате списка; например, `[2, 2, 2, 2]` - `"layers_num": 4`, `"block_size": 2`;
+- `layers_config` - слои модели в формате списка; например, `[2, 2, 2]` - `"layers_num": 3`, `"block_size": 2`;
 - `activation` - функция активации (`ReLU`, `LeakyReLU`, `ELU`, или `GELU`);
 - `in_channels` - количество входных каналов; например, для RGB-картинок `in_channels=3`;
 - `layer0_channels` - количество каналов на входе первого базового слоя.
 
 #### Конфигурирование проекта
-Гиперпараметры задаются в файле [config.json](src/hyperparameters/config.json), включая:
+Гиперпараметры задаются в файле [???.json](src/hyperparameters/???.json), включая:
+- количество эпох в конце обучения, на которых включается дообучение backbone: `backbone_tune_epoch`;
 - архитектура модели: `layers_num`, `block_size`, `activation`;
 - выбранные классы датасета: `selected_classes`;
 - параметры обучения: `epochs`, `batch_size`, `solver`;
