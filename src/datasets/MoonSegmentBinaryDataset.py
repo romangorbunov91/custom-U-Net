@@ -59,10 +59,6 @@ class MoonSegmentationDataset(Dataset):
         # Предобработка.
         if self.preprocessing:
             sample = self.preprocessing(image=img, mask=mask)
-            img, mask = sample['image'], sample['mask']        
-        
-        # Ensure channels-first format for PyTorch
-        img = torch.from_numpy(img).permute(2, 0, 1).float()  # (H, W, C) → (C, H, W)
-        mask = torch.from_numpy(mask).unsqueeze(0)           # (H, W) → (1, H, W)
+            img, mask = sample['image'], sample['mask']
 
-        return img, mask
+        return img, mask.unsqueeze(0)

@@ -53,7 +53,7 @@ if __name__ == "__main__":
         raise NotImplementedError(f"Dataset not supported: {configer.get('dataset', 'name')}")
     
     model.init_model()
-    train_history, train_num, val_num, class_num, model_param_count, model_struct = model.train()
+    train_history, train_num, val_num, model_param_count = model.train()
 
     train_log = [
     {
@@ -96,7 +96,6 @@ if __name__ == "__main__":
             "final_train_acc": train_history["train_accuracy"][-1],
             "final_val_acc": train_history["val_accuracy"][-1],
             },
-        "model_architecture": model_struct,
         "train_log": train_log
     }
     logs_dir = Path(configer.get("checkpoints", "logs_dir"))

@@ -13,7 +13,7 @@ from albumentations.pytorch import ToTensorV2
 
 # Import Utils.
 from torch.utils.data import DataLoader
-from utils.average_meter import AverageMeter
+from utils.metrics import AverageMeter, CombinedLoss, dice_coefficient, iou_score, pixel_accuracy
 
 # Import Datasets.
 from datasets.TinyImageNetDataset import TinyImageNetDataset
@@ -158,8 +158,8 @@ class ResNet18Trainer(object):
         else:
             raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
         
-        print(f"Train size: {len(self.train_loader.dataset)}")
-        print(f"Val size: {len(self.val_loader.dataset)}")
+        print(f"Train. size: {len(self.train_loader.dataset)}")
+        print(f"Valid. size: {len(self.val_loader.dataset)}")
         print(f"Number of classes: {len(self.train_loader.dataset.class_names)}")
               
     def __train(self):
@@ -181,7 +181,7 @@ class ResNet18Trainer(object):
             predicted = torch.argmax(output.detach(), dim=1)
             correct = gt.detach()
 
-            self.update_metrics("train", loss.item(), inputs.size(0),
+            self.update_metrics("train", inputs.size(0), loss.item(),
                                 float((predicted==correct).sum()) / len(correct))
 
     def __val(self):
@@ -200,7 +200,7 @@ class ResNet18Trainer(object):
                 predicted = torch.argmax(output.detach(), dim=1)
                 correct = gt.detach()
 
-                self.update_metrics("val", loss.item(), inputs.size(0),
+                self.update_metrics("val", inputs.size(0), loss.item(),
                                     float((predicted == correct).sum()) / len(correct))
         
         ret = self.model_utility.save(
@@ -245,11 +245,9 @@ class ResNet18Trainer(object):
         return self.train_history, \
             len(self.train_loader.dataset), \
             len(self.val_loader.dataset), \
-            len(self.train_loader.dataset.class_names), \
-            self.model_size, \
-            str(self.net)
+            self.model_size
     
-    def update_metrics(self, split: str, loss, bs, accuracy):
+    def update_metrics(self, split: str, bs: int, loss, accuracy):
         self.losses[split].update(loss, bs)
         self.accuracy[split].update(accuracy, bs)
         
@@ -286,7 +284,16 @@ class UNetTrainer(object):
             'train': AverageMeter(),
             'val': AverageMeter()
         }
-
+        # Train and val dice.
+        self.dice = {
+            'train': AverageMeter(),
+            'val': AverageMeter()
+        }
+        # Train and val iou.
+        self.iou = {
+            'train': AverageMeter(),
+            'val': AverageMeter()
+        }
         # Train and val accuracy.
         self.accuracy = {
             'train': AverageMeter(),
@@ -296,8 +303,12 @@ class UNetTrainer(object):
         self.train_history = {
             "epoch": [],
             "train_loss": [],
+            "train_dice": [],
+            "train_iou": [],
             "train_accuracy": [],
             "val_loss": [],
+            "val_dice": [],
+            "val_iou": [],
             "val_accuracy": [],
             "lr": []
         }
@@ -305,7 +316,7 @@ class UNetTrainer(object):
     def init_model(self):
         """Initialize model and other data for procedure"""
         
-        self.loss = nn.CrossEntropyLoss().to(self.device)
+        self.loss = CombinedLoss(bce_weight=0.5, dice_weight=0.5).to(self.device)
         
         img_size = self.configer.get('dataset', 'img_size')
         self.net = customUNet(
@@ -405,30 +416,35 @@ class UNetTrainer(object):
         else:
             raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
         
-        print(f"Train size: {len(self.train_loader.dataset)}")
-        print(f"Val size: {len(self.val_loader.dataset)}")
+        print(f"Train. size: {len(self.train_loader.dataset)}")
+        print(f"Valid. size: {len(self.val_loader.dataset)}")
               
     def __train(self):
         """Train function for every epoch."""
         self.net.train()
         for data_tuple in tqdm(self.train_loader, desc="Train"):
 
-            inputs, gt = data_tuple[0].to(self.device), data_tuple[1].to(self.device)
+            inputs, masks = data_tuple[0].to(self.device), data_tuple[1].to(self.device)
 
-            output = self.net(inputs)
+            outputs = self.net(inputs)
 
             self.optimizer.zero_grad()
-            loss = self.loss(output, gt)
+            loss = self.loss(outputs, masks)
             loss.backward()
-
             torch.nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
             self.optimizer.step()
 
-            predicted = torch.argmax(output.detach(), dim=1)
-            correct = gt.detach()
+            dice = dice_coefficient(outputs.detach(), masks.detach())
+            iou = iou_score(outputs.detach(), masks.detach())
+            accuracy = pixel_accuracy(outputs.detach(), masks.detach())
 
-            self.update_metrics("train", loss.item(), inputs.size(0),
-                                float((predicted==correct).sum()) / len(correct))
+            self.update_metrics(
+                "train",
+                inputs.size(0),
+                loss.item(),
+                dice,
+                iou,
+                accuracy)
 
     def __val(self):
         """Validation function."""
@@ -436,19 +452,25 @@ class UNetTrainer(object):
 
         with torch.no_grad():
             for data_tuple in tqdm(self.val_loader, desc="Val"):
-
-                inputs, gt = data_tuple[0].to(self.device), data_tuple[1].to(self.device)
-
-                output = self.net(inputs)
                 
-                loss = self.loss(output, gt)
+                inputs, masks = data_tuple[0].to(self.device), data_tuple[1].to(self.device)
+                
+                outputs = self.net(inputs)
+                
+                loss = self.loss(outputs, masks)
 
-                predicted = torch.argmax(output.detach(), dim=1)
-                correct = gt.detach()
+                dice = dice_coefficient(outputs.detach(), masks.detach())
+                iou = iou_score(outputs.detach(), masks.detach())
+                accuracy = pixel_accuracy(outputs.detach(), masks.detach())
 
-                self.update_metrics("val", loss.item(), inputs.size(0),
-                                    float((predicted == correct).sum()) / len(correct))
-        
+                self.update_metrics(
+                    "val",
+                    inputs.size(0),
+                    loss.item(),
+                    dice,
+                    iou,
+                    accuracy)
+                
         ret = self.model_utility.save(
             self.accuracy["val"].avg,
             self.net,
@@ -467,8 +489,13 @@ class UNetTrainer(object):
             
             self.train_history["epoch"].append(self.epoch + 1)
             self.train_history["train_loss"].append(self.losses["train"].avg)
+            self.train_history["train_dice"].append(self.dice["train"].avg)
+            self.train_history["train_iou"].append(self.iou["train"].avg)
             self.train_history["train_accuracy"].append(self.accuracy["train"].avg)
             self.train_history["val_loss"].append(self.losses["val"].avg)
+            self.train_history["val_loss"].append(self.losses["val"].avg)
+            self.train_history["val_dice"].append(self.dice["val"].avg)
+            self.train_history["val_iou"].append(self.iou["val"].avg)
             self.train_history["val_accuracy"].append(self.accuracy["val"].avg)
             self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
             
@@ -477,8 +504,12 @@ class UNetTrainer(object):
             print(f"{' ' * len(prefix)}Val   Loss: {self.train_history['val_loss'][-1]:.4f}, Accuracy: {self.train_history['val_accuracy'][-1]:.4f}")
             
             self.losses["train"].reset()
+            self.dice["train"].reset()
+            self.iou["train"].reset()
             self.accuracy["train"].reset()
             self.losses["val"].reset()
+            self.dice["val"].reset()
+            self.iou["val"].reset()
             self.accuracy["val"].reset()
 
             if ret < 0:
@@ -491,10 +522,10 @@ class UNetTrainer(object):
         return self.train_history, \
             len(self.train_loader.dataset), \
             len(self.val_loader.dataset), \
-            len(self.train_loader.dataset.class_names), \
-            self.model_size, \
-            str(self.net)
+            self.model_size
     
-    def update_metrics(self, split: str, loss, bs, accuracy):
+    def update_metrics(self, split: str, bs: int, loss, dice, iou, accuracy):
         self.losses[split].update(loss, bs)
+        self.dice[split].update(dice, bs)
+        self.iou[split].update(iou, bs)
         self.accuracy[split].update(accuracy, bs)
