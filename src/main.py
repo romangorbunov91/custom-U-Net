@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 import argparse
 
-from train import ResNet18Trainer, UNetTrainer, UNetBacboneTrainer
+from train import ResNetTrainer, UNetTrainer#, UNetBacboneTrainer
 from utils.configer import Configer
 
 if __name__ == "__main__":
@@ -28,7 +28,25 @@ if __name__ == "__main__":
     torch.autograd.set_detect_anomaly(True)
     configer = Configer(args)
     
-    seed = configer.get("seed")
+    # Read config-files.
+    hyperparameters_path = Path("./src/hyperparameters/")
+    
+    with open(hyperparameters_path / "config.json", "r") as f:
+        configer.general_config = json.load(f)
+    
+    with open(hyperparameters_path / (str(configer.get('model_name')) + "-config.json"), "r") as f:
+        configer.model_config = json.load(f)
+    
+    with open(hyperparameters_path / (str(configer.get('dataset_name')) + "-config.json"), "r") as f:
+        configer.dataset_config = json.load(f)
+    
+    if configer.get('backbone_model_name') is not None:
+        with open(hyperparameters_path / (str(configer.get('backbone_model_name')) + "-config.json"), "r") as f:
+            configer.backbone_model_config = json.load(f)
+        with open(hyperparameters_path / (str(configer.backbone_model_config.get('dataset_name')) + "-config.json"), "r") as f:
+            configer.backbone_dataset_config = json.load(f)
+        
+    seed = configer.general_config.get("seed")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -37,31 +55,31 @@ if __name__ == "__main__":
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True  # To have ~deterministic results
 
-    configer.device = configer.get("device").lower() if torch.cuda.is_available() else 'cpu'
+    configer.device = configer.general_config.get("device").lower() if torch.cuda.is_available() else 'cpu'
     
-    if configer.get('model', 'name') == "customResNet18":
+    if configer.model_config.get('model_name') == "customResNet":
         configer.output_file_name = (
-            f"{str(configer.get('model', 'name'))}_"
-            f"{str(configer.get('model', 'layers_num'))}x"
-            f"{str(configer.get('model', 'block_size'))}_"
-            f"classes_{str(len(configer.get('dataset', 'selected_classes')))}"
+            f"{str(configer.model_config.get('model_name'))}_"
+            f"{str(configer.model_config.get('layers_num'))}x"
+            f"{str(configer.model_config.get('block_size'))}_"
+            f"classes_{str(len(configer.dataset_config.get('selected_classes')))}"
         )
-    elif configer.get('model', 'name') == "customUNet":
-        if configer.get('model', 'backbone') is None:
+    elif configer.model_config.get('model_name') == "customUNet":
+        if configer.model_config.get('backbone_model_name') is None:
             configer.output_file_name = (
-                f"{str(configer.get('model', 'name'))}"
+                f"{str(configer.model_config.get('model_name'))}"
             )
         else:
             configer.output_file_name = (
-                f"{str(configer.get('model', 'name'))}_"
-                f"backbone_{str(configer.get('model', 'backbone'))}_"
-                f"finetune_last_{str(configer.get('backbone_tune_epoch'))}_epochs"
+                f"{str(configer.model_config.get('model_name'))}_"
+                f"backbone_{str(configer.model_config.get('backbone_model_name'))}_"
+                f"finetune_last_{str(configer.model_config.get('backbone_tune_epoch'))}_epochs"
             )
     else:
-        raise NotImplementedError(f"Model not supported: {configer.get('model', 'name')}")
+        raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
 
-    if configer.get('model', 'name') == "customResNet18":
-        model = ResNet18Trainer(configer)
+    if configer.model_config.get('model_name') == "customResNet":
+        model = ResNetTrainer(configer)
         model.init_model()
         train_history, train_size, val_size, model_param_count = model.train()
 
@@ -81,35 +99,36 @@ if __name__ == "__main__":
             "metadata": {
                 "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
                 "model": {
-                    "name": configer.get("model", "name"),
-                    "layers_num": configer.get("model", "layers_num"),
-                    "block_size": configer.get("model", "block_size"),
-                    "param_count": model_param_count
+                    "name": configer.model_config.get("model_name"),
+                    "layers_num": configer.model_config.get("layers_num"),
+                    "block_size": configer.model_config.get("block_size"),
+                    "param_count": model_param_count,
+                    "checkpoints_metric": configer.model_config.get("checkpoints_metric")
                     },
                 "dataset": {
-                    "name": configer.get("dataset", "name"),
-                    "img_size": configer.get("dataset", "img_size"),
+                    "name": configer.dataset_config.get("dataset_name"),
+                    "img_size": configer.dataset_config.get("img_size"),
                     "train_size": train_size,
                     "val_size": val_size,
-                    "class_size": len(configer.get("dataset", "selected_classes")),
-                    "selected_classes": configer.get("dataset", "selected_classes")
+                    "class_size": len(configer.dataset_config.get("selected_classes")),
+                    "selected_classes": configer.dataset_config.get("selected_classes")
                     },
                 "device": configer.device,
-                "workers": configer.get("data", "workers"),
-                "batch_size": configer.get("data", "batch_size"),
-                "solver": configer.get("solver", "type"),
-                "seed": configer.get("seed")
+                "seed": configer.general_config.get("seed"),
+                "workers": configer.model_config.get("workers"),
+                "batch_size": configer.model_config.get("batch_size"),
+                "solver_type": configer.model_config.get("solver_type")
                 },
             "summary": {
-                "best_val_acc": max(train_history["val_accuracy"]),
-                "best_epoch": train_history["epoch"][train_history["val_accuracy"].index(max(train_history["val_accuracy"]))],
-                "final_train_acc": train_history["train_accuracy"][-1],
-                "final_val_acc": train_history["val_accuracy"][-1],
+                "best_val_" + configer.model_config.get("checkpoints_metric"): max(train_history["val_" + configer.model_config.get("checkpoints_metric")]),
+                "best_epoch": train_history["epoch"][train_history["val_" + configer.model_config.get("checkpoints_metric")].index(max(train_history["val_" + configer.model_config.get("checkpoints_metric")]))],
+                "final_train_" + configer.model_config.get("checkpoints_metric"): train_history["train_" + configer.model_config.get("checkpoints_metric")][-1],
+                "final_val_" + configer.model_config.get("checkpoints_metric"): train_history["val_" + configer.model_config.get("checkpoints_metric")][-1],
                 },
             "train_log": train_log
         }
 
-    elif configer.get('model', 'name') == "customUNet":
+    elif configer.get('model_name') == "customUNet":
         if configer.get('model', 'backbone') is None:
             model = UNetTrainer(configer)
             model.init_model()
@@ -231,10 +250,10 @@ if __name__ == "__main__":
                 "train_log": train_log
             }
     else:
-        raise NotImplementedError(f"Model not supported: {configer.get('model', 'name')}")
+        raise NotImplementedError(f"Model not supported: {configer.get('model_name')}")
     
     
-    logs_dir = Path(configer.get("checkpoints", "logs_dir"))
+    logs_dir = Path(configer.general_config.get("logs_dir"))
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
     

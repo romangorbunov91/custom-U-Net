@@ -2,7 +2,7 @@
   "model_name": "customUNet",
   "feature_list": [32, 64, 128, 256],
   "checkpoints_save_policy": "best",
-  "checkpoints_metric": "val_dice",
+  "checkpoints_metric": "dice",
   "early_stop_number": 0,
   "dataset_name": "moon-segmentation-binary",
   "workers": 4,

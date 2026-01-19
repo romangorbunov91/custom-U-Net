@@ -31,14 +31,14 @@ def worker_init_fn(worker_id):
 mean_norm = [0.485, 0.456, 0.406]
 std_norm = [0.229, 0.224, 0.225]
 
-class ResNet18Trainer(object):
+class ResNetTrainer(object):
 
     def __init__(self, configer):
         self.configer = configer
 
         #: str: Type of dataset.
-        self.dataset = self.configer.get("dataset", "name").lower()
-        self.data_path = Path(self.configer.get("data", "data_path")) / self.configer.get("dataset", "name")
+        self.dataset = self.configer.get("dataset_name").lower()
+        self.data_path = Path(self.configer.general_config.get("data_dir")) / self.configer.get("dataset_name")
         
         # DataLoaders.
         self.train_loader = None
@@ -59,7 +59,7 @@ class ResNet18Trainer(object):
         self.val_transforms = None
         
         #: int: Chosen classes to work with.
-        self.selected_classes = self.configer.get("dataset", "selected_classes")
+        self.selected_classes = self.configer.dataset_config.get("selected_classes")
         self.n_classes = len(self.selected_classes)
         
         # Train and val losses.
@@ -88,12 +88,12 @@ class ResNet18Trainer(object):
         
         self.loss = nn.CrossEntropyLoss().to(self.device)
         
-        img_size = self.configer.get('dataset', 'img_size')
+        img_size = self.configer.dataset_config.get('img_size')
         self.net = customResNet(
             num_classes = self.n_classes,
-            layers_config = self.configer.get("model", "layers_num")*[self.configer.get("model", "block_size")],
+            layers_config = self.configer.model_config.get("layers_num")*[self.configer.model_config.get("block_size")],
             in_channels = img_size[0],
-            layer0_channels = 256 // 2**(self.configer.get("model", "layers_num") - 1)
+            layer0_channels = self.configer.model_config.get("output_channels") // 2**(self.configer.model_config.get("layers_num") - 1)
         )
 
         # Initializing training.
@@ -103,20 +103,20 @@ class ResNet18Trainer(object):
 
         # Resuming training, restoring optimizer value.
         if optim_dict is None:
-            print(f"Starting training from scratch using {self.configer.get('solver', 'type')}.")
+            print(f"Starting training from scratch using {self.configer.model_config.get('solver_type')}.")
         else:
-            print(f"Resuming training from epoch {self.epoch} using {self.configer.get('solver', 'type')}.")
+            print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
             self.optimizer.load_state_dict(optim_dict)
         
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model size: {self.model_size}")
-        mdl_img_size = self.configer.get('model', 'img_size')
+        mdl_input_size = self.configer.model_config.get('input_size')
         
         # Selecting Dataset and DataLoader.        
         if self.dataset == "tiny-imagenet-200":
             self.train_transforms = transforms.Compose([
                 transforms.Resize(tuple([int(img_size[1] * 1.125)]*2)),
-                transforms.RandomResizedCrop(mdl_img_size[1], scale=(0.8, 1.0)),
+                transforms.RandomResizedCrop(mdl_input_size[1], scale=(0.8, 1.0)),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomRotation(10),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
@@ -125,7 +125,7 @@ class ResNet18Trainer(object):
             ])
 
             self.val_transforms = transforms.Compose([
-                transforms.Resize(tuple(mdl_img_size[1:])),
+                transforms.Resize(tuple(mdl_input_size[1:])),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean_norm, std=std_norm)
             ])
@@ -141,9 +141,9 @@ class ResNet18Trainer(object):
                     transform = self.train_transforms,
                     selected_classes = self.selected_classes
                     ),
-                batch_size=self.configer.get("data", "batch_size"),
+                batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=True,
-                num_workers=self.configer.get("data", "workers"))
+                num_workers=self.configer.model_config.get("workers"))
             
             self.val_loader = DataLoader(
                 TinyImageNetDataset(
@@ -152,11 +152,11 @@ class ResNet18Trainer(object):
                     transform = self.val_transforms,
                     selected_classes = self.selected_classes
                     ),
-                batch_size=self.configer.get("data", "batch_size"),
+                batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
-                num_workers=self.configer.get("data", "workers"))
+                num_workers=self.configer.model_config.get("workers"))
         else:
-            raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
+            raise NotImplementedError(f"Dataset not supported: {self.configer.model_config.get('dataset_name')}")
         
         print(f"Train. size: {len(self.train_loader.dataset)}")
         print(f"Valid. size: {len(self.val_loader.dataset)}")

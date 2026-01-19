@@ -17,19 +17,20 @@ class ModelUtilizer(object):
         self.device = torch.device(self.configer.device)
         print(f"Device (model_utilizer.py): {self.device}")
         self.output_file_name = self.configer.output_file_name
-        self.save_policy = self.configer.get("checkpoints", "save_policy")
+        self.save_policy = self.configer.model_config.get("checkpoints_save_policy")
         if self.save_policy == "all":
             self.save = self.save_all
         elif self.save_policy == "best":
-            if self.configer.get("checkpoints", "early_stop_number") > 0:
+            if self.configer.model_config.get("early_stop_number") > 0:
                 self.save = self.early_stop
             else:
                 self.save = self.save_best
         else:
             raise ValueError(f'Policy "{self.save_policy}" is unknown.')
 
-        self.best_accuracy = 0
-        self.last_improvement = 0
+        self.best_metric = self.configer.model_config.get("checkpoints_metric")
+        self.best_metric_value = 0
+        self.last_improvement_cnt = 0
 
     def update_optimizer(self, net):
         """Load optimizer and adjust learning rate during training.
@@ -42,9 +43,9 @@ class ModelUtilizer(object):
                 lr (float): Learning rate for training procedure.
 
         """
-        optim = self.configer.get('solver', 'type')
-        decay = self.configer.get('solver', 'weight_decay')
-        lr = self.configer.get('solver', 'base_lr')
+        optim = self.configer.model_config.get('solver_type')
+        decay = self.configer.model_config.get('weight_decay')
+        lr = self.configer.model_config.get('base_lr')
         
         if optim == "Adam":
             optimizer = torch.optim.Adam(
@@ -118,7 +119,7 @@ class ModelUtilizer(object):
             'optimizer': optimizer.state_dict()
         }
         
-        checkpoints_dir = Path(self.configer.get('checkpoints', 'save_dir')) / self.configer.get("dataset", "name")
+        checkpoints_dir = Path(self.configer.general_config.get('checkpoints_dir')) / self.configer.get("model_name")
         if not os.path.exists(checkpoints_dir):
             os.makedirs(checkpoints_dir)
         if self.save_policy == "all":
@@ -130,25 +131,25 @@ class ModelUtilizer(object):
    
         torch.save(state, checkpoints_dir / latest_name)
 
-    def save_all(self, accuracy, net, optimizer, epoch):
+    def save_all(self, metric_value, net, optimizer, epoch):
         self._save_net(net, optimizer, epoch)
-        return accuracy
+        return metric_value
 
-    def save_best(self, accuracy, net, optimizer, epoch):
-        if accuracy > self.best_accuracy:
-            self.best_accuracy = accuracy
+    def save_best(self, metric_value, net, optimizer, epoch):
+        if metric_value > self.best_metric_value:
+            self.best_metric_value = metric_value
             self._save_net(net, optimizer, epoch)
-            return self.best_accuracy
+            return self.best_metric_value
         else:
             return 0
 
-    def early_stop(self, accuracy, net, optimizer, epoch):
-        ret = self.save_best(accuracy, net, optimizer, epoch)
+    def early_stop(self, metric_value, net, optimizer, epoch):
+        ret = self.save_best(metric_value, net, optimizer, epoch)
         if ret > 0:
-            self.last_improvement = 0
+            self.last_improvement_cnt = 0
         else:
-            self.last_improvement += 1
-        if self.last_improvement >= self.configer.get("checkpoints", "early_stop_number"):
+            self.last_improvement_cnt += 1
+        if self.last_improvement_cnt >= self.configer.model_cofig.get("early_stop_number"):
             return -1
         else:
             return ret

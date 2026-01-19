@@ -64,17 +64,17 @@ self.val_transforms = transforms.Compose([
 
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
-python src\main.py --hypes src\hyperparameters\tiny-imagenet-200-config.json
+python src\main.py --hypes src\hyperparameters\customResNet-config.json.json
 ```
 ```
-python src\main.py --hypes src\hyperparameters\moon-segmentation-binary-config.json
+python src\main.py --hypes src\hyperparameters\customUNet-config.json
 ```
 или
 ```
-python src\main.py --hypes src\hyperparameters\tiny-imagenet-200-config.json --resume checkpoints\tiny-imagenet-200\best_mdl_4x2_ReLU_Adam.pth
+python src\main.py --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_mdl_4x2_ReLU_Adam.pth
 ```
 ```
-python src\main.py --hypes src\hyperparameters\moon-segmentation-binary-config.json --resume checkpoints\moon-segmentation-binary\best_mdl_4x2_ReLU_Adam.pth
+python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_mdl_4x2_ReLU_Adam.pth
 ```
 Логи обучения хранятся в [train_logs](train_logs).
 
