@@ -64,7 +64,7 @@ self.val_transforms = transforms.Compose([
 
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
-python src\main.py --hypes src\hyperparameters\customResNet-config.json.json
+python src\main.py --hypes src\hyperparameters\customResNet-config.json
 ```
 ```
 python src\main.py --hypes src\hyperparameters\customUNet-config.json
