@@ -128,8 +128,8 @@ if __name__ == "__main__":
             "train_log": train_log
         }
 
-    elif configer.get('model_name') == "customUNet":
-        if configer.get('model', 'backbone') is None:
+    elif configer.model_config.get('model_name') == "customUNet":
+        if configer.model_config.get('backbone_model_name') is None:
             model = UNetTrainer(configer)
             model.init_model()
             train_history, train_size, val_size, model_param_count = model.train()
@@ -149,46 +149,52 @@ if __name__ == "__main__":
             }
             for i in range(len(train_history["epoch"]))
             ]
-            
+            backbone_model_param_count = None
+            backbone_train_size = 0
+            backbone_val_size = 0
             output_dict = {
                 "metadata": {
                     "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
                     "model": {
-                        "name": configer.get("model", "name"),
+                        "name": configer.model_config.get("model_name"),
+                        "layers_num": configer.model_config.get("feature_list"),
                         "param_count": model_param_count
                         },
                     "backbone_model": {
-                        "name": configer.get("model", "name"),
-                        "param_count": model_param_count
+                        "name": configer.model_config.get('backbone_model_name'),
+                        "backbone_param_count": backbone_model_param_count
                         },
                     "dataset": {
-                        "name": configer.get("dataset", "name"),
-                        "img_size": configer.get("dataset", "img_size"),
+                        "name": configer.dataset_config.get("dataset_name"),
+                        "img_size": configer.dataset_config.get("img_size"),
                         "train_size": train_size,
                         "val_size": val_size
                         },
+                    '''
                     "backbone_dataset": {
-                        "name": configer.get("dataset", "name"),
-                        "img_size": configer.get("dataset", "img_size"),
-                        "train_size": train_size,
-                        "val_size": val_size,
-                        "class_size": len(configer.get("dataset", "selected_classes")),
-                        "selected_classes": configer.get("dataset", "selected_classes")
+                        "name": configer.backbone_dataset_config.get("dataset_name"),
+                        "img_size": configer.backbone_dataset_config.get("img_size"),
+                        "train_size": backbone_train_size,
+                        "val_size": backbone_val_size,
+                        "class_size": len(configer.backbone_dataset_config.get("selected_classes")),
+                        "selected_classes": configer.backbone_dataset_config.get("selected_classes")
                         },
+                    '''
                     "device": configer.device,
-                    "workers": configer.get("data", "workers"),
-                    "batch_size": configer.get("data", "batch_size"),
-                    "solver": configer.get("solver", "type"),
-                    "seed": configer.get("seed")
+                    "seed": configer.general_config.get("seed"),
+                    "workers": configer.model_config.get("workers"),
+                    "batch_size": configer.model_config.get("batch_size"),
+                    "solver_type": configer.model_config.get("solver_type")
                     },
                 "summary": {
-                    "best_val_dice": max(train_history["val_dice"]),
-                    "best_epoch": train_history["epoch"][train_history["val_dice"].index(max(train_history["val_dice"]))],
-                    "final_train_dice": train_history["train_dice"][-1],
-                    "final_val_dice": train_history["val_dice"][-1],
+                    "best_val_" + configer.model_config.get("checkpoints_metric"): max(train_history["val_" + configer.model_config.get("checkpoints_metric")]),
+                    "best_epoch": train_history["epoch"][train_history["val_" + configer.model_config.get("checkpoints_metric")].index(max(train_history["val_" + configer.model_config.get("checkpoints_metric")]))],
+                    "final_train_" + configer.model_config.get("checkpoints_metric"): train_history["train_" + configer.model_config.get("checkpoints_metric")][-1],
+                    "final_val_" + configer.model_config.get("checkpoints_metric"): train_history["val_" + configer.model_config.get("checkpoints_metric")][-1],
                     },
                 "train_log": train_log
             }
+        '''
         else:
             model = UNetBacboneTrainer(configer)
             model.init_model()
@@ -249,8 +255,9 @@ if __name__ == "__main__":
                     },
                 "train_log": train_log
             }
+        '''
     else:
-        raise NotImplementedError(f"Model not supported: {configer.get('model_name')}")
+        raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
     
     
     logs_dir = Path(configer.general_config.get("logs_dir"))

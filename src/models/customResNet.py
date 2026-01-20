@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from typing import List, Tuple, Optional
 
 class BasicBlock(nn.Module):
     """
@@ -167,7 +168,7 @@ class customResNetConcept(nn.Module):
     
 def customResNet(
     num_classes: int,
-    layers_config,
+    layers_config: List[int],
     in_channels: int,
     layer0_channels: int,
     zero_init_residual=False

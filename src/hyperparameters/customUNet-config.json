@@ -10,8 +10,8 @@
   "base_lr": 0.0001,
   "weight_decay": 0.00001,
   "solver_type": "Adam",
-  "batch_size": 200,
-  "epochs": 10,
-  "backbone_model_name": "customResNet18",
-  "backbone_tune_epoch": 10
+  "batch_size": 100,
+  "epochs": 5,
+  "backbone_model_name": null,
+  "backbone_tune_epoch": 2
 }

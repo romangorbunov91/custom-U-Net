@@ -19,14 +19,14 @@ class DoubleConv(nn.Module):
     def forward(self, x):
         return self.double_conv(x)
 
-class customUNet(nn.Module):
+class customUNetConcept(nn.Module):
 
     def __init__(self,
-                in_channels = 3,
-                out_channels = 1,
-                features: Optional[List[int]] = [64, 128, 256, 512]
+                in_channels: int,
+                out_channels: int,
+                features: Optional[List[int]]
                 ):
-        super(customUNet, self).__init__()
+        super(customUNetConcept, self).__init__()
         
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
@@ -82,3 +82,14 @@ class customUNet(nn.Module):
         output = self.final_conv(x)
         
         return output
+
+def customUNet(
+    in_channels: int = 3,
+    out_channels: int = 1,
+    features: Optional[List[int]] = [64, 128, 256, 512]
+    ):
+    return customUNetConcept(
+        in_channels = in_channels,
+        out_channels = out_channels,
+        features = features
+    )
