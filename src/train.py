@@ -38,10 +38,14 @@ class MetricsHistory:
             name: {'train': AverageMeter(), 'val': AverageMeter()}
             for name in metric_names
         }
-        self.train_history = {
-            f"{split}_{name}" for split in ['train', 'val'] for name in list(self.metrics.keys())
-        }
-        self.train_history = {key: [] for key in self.train_history}
+
+        history_keys = [
+            f"{split}_{name}"
+            for split in ['train', 'val']
+            for name in list(self.metrics.keys())
+            ]
+        
+        self.train_history = {key: [] for key in history_keys}
         self.train_history["epoch"] = []
         self.train_history["lr"] = []
     
@@ -56,11 +60,11 @@ class MetricsHistory:
     
     def log_epoch_history(self):
         self.train_history["epoch"].append(self.epoch + 1)
+        self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
         for name in self.metrics:
             for split in ['train', 'val']:
                 key = f"{split}_{name}"
                 self.train_history[key].append(self.metrics[name][split].avg)
-        self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
 
     def update_metrics(self, split: str, batch_size: int, **metrics: float) -> None:
         """
@@ -105,10 +109,10 @@ class ResNetTrainer(MetricsHistory):
         # Training procedure.
         self.epoch = None
         self.optimizer = None
+        self.scheduler = None
         self.loss = None
         self.train_transforms = None
         self.val_transforms = None
-        
         #: int: Chosen classes to work with.
         self.selected_classes = self.configer.dataset_config.get("selected_classes")
         self.n_classes = len(self.selected_classes)
@@ -129,7 +133,7 @@ class ResNetTrainer(MetricsHistory):
         )
 
         # Initializing training.
-        self.net, self.epoch_init, optim_dict = self.model_utility.load_net(self.net)
+        self.net, self.epoch_init, optim_dict, _ = self.model_utility.load_net(self.net)
         self.epoch = self.epoch_init
         self.optimizer, self.lr = self.model_utility.update_optimizer(self.net)
 
@@ -140,10 +144,8 @@ class ResNetTrainer(MetricsHistory):
             print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
             self.optimizer.load_state_dict(optim_dict)
         
-        trainable = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
-        total = sum(p.numel() for p in self.net.parameters())
-        print(f"Model params: {trainable}/{total} (trainable/total)")
-        self.model_size = trainable
+        self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        print(f"Model parameters: {self.model_size}")
         
         # Selecting Dataset and DataLoader.        
         if self.dataset == "tiny-imagenet-200":
@@ -250,7 +252,8 @@ class ResNetTrainer(MetricsHistory):
             self.metrics[self.configer.model_config.get("checkpoints_metric")]["val"].avg,
             self.net,
             self.optimizer,
-            self.epoch + 1)
+            self.epoch + 1,
+            self.scheduler)
 
         if ret < 0:
             return -1
@@ -301,6 +304,7 @@ class UNetTrainer(MetricsHistory):
         # Training procedure.
         self.epoch = None
         self.optimizer = None
+        self.scheduler = None
         self.loss = None
         self.train_augmentation = None
         self.val_augmentation = None
@@ -321,7 +325,7 @@ class UNetTrainer(MetricsHistory):
             )
   
         # Initializing training.
-        self.net, self.epoch_init, optim_dict = self.model_utility.load_net(self.net)
+        self.net, self.epoch_init, optim_dict, sched_dict = self.model_utility.load_net(self.net)
         self.epoch = self.epoch_init
         self.optimizer, self.lr = self.model_utility.update_optimizer(self.net)
 
@@ -338,11 +342,11 @@ class UNetTrainer(MetricsHistory):
             factor=0.5, 
             patience=3, 
         )
-
-        trainable = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
-        total = sum(p.numel() for p in self.net.parameters())
-        print(f"Model params: {trainable}/{total} (trainable/total)")
-        self.model_size = trainable
+        if sched_dict is not None:
+            self.scheduler.load_state_dict(sched_dict)
+        
+        self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        print(f"Model parameters: {self.model_size}")
         
         # Selecting Dataset and DataLoader.
         if self.dataset == "moon-segmentation-binary":
@@ -472,7 +476,8 @@ class UNetTrainer(MetricsHistory):
             self.metrics[self.configer.model_config.get("checkpoints_metric")]["val"].avg,
             self.net,
             self.optimizer,
-            self.epoch + 1)
+            self.epoch + 1,
+            self.scheduler)
 
         if ret < 0:
             return -1
