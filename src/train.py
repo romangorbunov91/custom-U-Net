@@ -44,7 +44,16 @@ class MetricsHistory:
         self.train_history = {key: [] for key in self.train_history}
         self.train_history["epoch"] = []
         self.train_history["lr"] = []
-
+    
+    def print_metrics(self):
+        prefix = f"Epoch {self.train_history['epoch'][-1]:2d} | "
+        train_str = ", ".join(f"{name}: {self.train_history[f'train_{name}'][-1]:.4f}" 
+                            for name in list(self.metrics.keys()))
+        val_str = ", ".join(f"{name}: {self.train_history[f'val_{name}'][-1]:.4f}" 
+                            for name in list(self.metrics.keys()))
+        print(f"{prefix}Train. {train_str}")
+        print(f"{' ' * len(prefix)}Valid. {val_str}")
+    
     def log_epoch_history(self):
         self.train_history["epoch"].append(self.epoch + 1)
         for name in self.metrics:
@@ -53,7 +62,7 @@ class MetricsHistory:
                 self.train_history[key].append(self.metrics[name][split].avg)
         self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
 
-    def update_metrics(self, split: str, batch_size: int, **metrics):
+    def update_metrics(self, split: str, batch_size: int, **metrics: float) -> None:
         """
         Update metrics for a given split.
         
@@ -131,8 +140,10 @@ class ResNetTrainer(MetricsHistory):
             print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
             self.optimizer.load_state_dict(optim_dict)
         
-        self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
-        print(f"Model size: {self.model_size}")
+        trainable = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        total = sum(p.numel() for p in self.net.parameters())
+        print(f"Model params: {trainable}/{total} (trainable/total)")
+        self.model_size = trainable
         
         # Selecting Dataset and DataLoader.        
         if self.dataset == "tiny-imagenet-200":
@@ -252,11 +263,7 @@ class ResNetTrainer(MetricsHistory):
             ret = self.__val()
             
             self.log_epoch_history()
-            
-            prefix = f"Epoch {self.train_history['epoch'][-1]:2d} | "
-            print(f"{prefix}Train Loss: {self.train_history['train_loss'][-1]:.4f}, Accuracy: {self.train_history['train_accuracy'][-1]:.4f}")
-            print(f"{' ' * len(prefix)}Val   Loss: {self.train_history['val_loss'][-1]:.4f}, Accuracy: {self.train_history['val_accuracy'][-1]:.4f}")
-                        
+            self.print_metrics()          
             self.reset_metrics()
 
             if ret < 0:
@@ -332,8 +339,10 @@ class UNetTrainer(MetricsHistory):
             patience=3, 
         )
 
-        self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
-        print(f"Model size: {self.model_size}")
+        trainable = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        total = sum(p.numel() for p in self.net.parameters())
+        print(f"Model params: {trainable}/{total} (trainable/total)")
+        self.model_size = trainable
         
         # Selecting Dataset and DataLoader.
         if self.dataset == "moon-segmentation-binary":
@@ -479,17 +488,7 @@ class UNetTrainer(MetricsHistory):
                 self.scheduler.step(self.metrics[self.configer.model_config.get("checkpoints_metric")]['val'].avg)
 
             self.log_epoch_history()
-            
-            prefix = f"Epoch {self.train_history['epoch'][-1]:2d} | "
-            print(f"{prefix}Train Loss: {self.train_history['train_loss'][-1]:.4f}, "
-                  f"Dice: {self.train_history['train_dice'][-1]:.4f}, "
-                  f"IoU: {self.train_history['train_iou'][-1]:.4f}, "
-                  f"Accuracy: {self.train_history['train_accuracy'][-1]:.4f}")
-            print(f"{' ' * len(prefix)}Val   Loss: {self.train_history['val_loss'][-1]:.4f}, "
-                  f"Dice: {self.train_history['val_dice'][-1]:.4f}, "
-                  f"IoU: {self.train_history['val_iou'][-1]:.4f}, "
-                  f"Accuracy: {self.train_history['val_accuracy'][-1]:.4f}")
-            
+            self.print_metrics()
             self.reset_metrics()
 
             if ret < 0:
