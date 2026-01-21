@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import torch
 import json
@@ -6,8 +5,9 @@ import random
 from pathlib import Path
 from datetime import datetime
 import argparse
+from typing import Dict, List, Any, Optional
 
-from train import ResNetTrainer, UNetTrainer#, UNetBacboneTrainer
+from train import ResNetTrainer, UNetTrainer#, UNetBackboneTrainer
 from utils.configer import Configer
 
 def set_seed(seed: int) -> None:
@@ -18,6 +18,76 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True  # To have ~deterministic results
         torch.backends.cudnn.benchmark = False
+
+def build_output_dict(
+    configer: Any,
+    train_history: Dict[str, List[float]],
+    train_size: int,
+    val_size: int,
+    model_param_count: int,
+    backbone_info: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+
+    # Build metadata generically.
+    metadata = {
+        "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
+        "model": {
+            "name": configer.model_config.get("model_name"),
+            "param_count": model_param_count,
+        },
+        "dataset": {
+            "name": configer.dataset_config.get("dataset_name"),
+            "img_size": configer.dataset_config.get("img_size"),
+            "train_size": train_size,
+            "val_size": val_size,
+        },
+        "device": configer.device,
+        "seed": configer.general_config.get("seed"),
+        "workers": configer.model_config.get("workers"),
+        "batch_size": configer.model_config.get("batch_size"),
+        "solver_type": configer.model_config.get("solver_type")
+    }
+
+    # Add model-specific details.
+    if configer.model_config.get("model_name") == "customResNet":
+        metadata["model"].update({
+            "layers_num": configer.model_config.get("layers_num"),
+            "block_size": configer.model_config.get("block_size"),
+            "class_size": len(configer.dataset_config.get("selected_classes")),
+            "selected_classes": configer.dataset_config.get("selected_classes")
+        })
+    elif configer.model_config.get("model_name") == "customUNet":
+        metadata["model"]["feature_list"] = configer.model_config.get("feature_list")
+        if backbone_info:
+            metadata["backbone_model"] = backbone_info
+
+    # Build train_log dynamically.
+    train_log = []
+    for i in range(len(train_history["epoch"])):
+        log_entry = {"epoch": train_history["epoch"][i], "lr": train_history["lr"][i]}
+        for key in train_history:
+            if key != "epoch" and key != "lr":
+                log_entry[key] = train_history[key][i]
+        train_log.append(log_entry)
+
+    # Summary: find best epoch based on monitored metric.
+    checkpoints_metric = configer.model_config.get("checkpoints_metric")
+    val_scores = np.array(train_history[f"val_{checkpoints_metric}"])
+    best_epoch_idx = np.argmax(val_scores)
+    best_epoch = train_history["epoch"][best_epoch_idx]
+
+    summary = {
+        f"best_val_{checkpoints_metric}": train_history[f"val_{checkpoints_metric}"][best_epoch_idx],
+        "best_epoch": best_epoch,
+        f"final_train_{checkpoints_metric}": train_history[f"train_{checkpoints_metric}"][-1],
+        f"final_val_{checkpoints_metric}": train_history[f"val_{checkpoints_metric}"][-1],
+    }
+
+    return {
+        "metadata": metadata,
+        "summary": summary,
+        "train_log": train_log
+    }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -40,19 +110,31 @@ if __name__ == "__main__":
     # Read config-files.
     hyperparameters_path = Path("./src/hyperparameters/")
     
-    with open(hyperparameters_path / "config.json", "r") as f:
+    config_path = hyperparameters_path / "config.json"
+    assert config_path.exists(), f"Config not found: {config_path}"
+    with open(config_path, "r") as f:
         configer.general_config = json.load(f)
     
-    with open(hyperparameters_path / (str(configer.get('model_name')) + "-config.json"), "r") as f:
+    model_config_path = hyperparameters_path / f"{configer.get('model_name')}-config.json"
+    assert model_config_path.exists(), f"Config not found: {model_config_path}"
+    with open(model_config_path, "r") as f:
         configer.model_config = json.load(f)
     
-    with open(hyperparameters_path / (str(configer.get('dataset_name')) + "-config.json"), "r") as f:
+    dataset_config_path = hyperparameters_path / f"{configer.get('dataset_name')}-config.json"
+    assert dataset_config_path.exists(), f"Config not found: {dataset_config_path}"
+    with open(dataset_config_path, "r") as f:
         configer.dataset_config = json.load(f)
     
     if configer.get('backbone_model_name') is not None:
-        with open(hyperparameters_path / (str(configer.get('backbone_model_name')) + "-config.json"), "r") as f:
+        
+        backbone_model_config_path = hyperparameters_path / f"{configer.get('backbone_model_name')}-config.json"
+        assert backbone_model_config_path.exists(), f"Config not found: {backbone_model_config_path}"
+        with open(backbone_model_config_path, "r") as f:
             configer.backbone_model_config = json.load(f)
-        with open(hyperparameters_path / (str(configer.backbone_model_config.get('dataset_name')) + "-config.json"), "r") as f:
+        
+        backbone_dataset_config_path = hyperparameters_path / f"{configer.backbone_model.get('dataset_name')}-config.json"
+        assert backbone_dataset_config_path.exists(), f"Config not found: {backbone_dataset_config_path}"
+        with open(backbone_dataset_config_path, "r") as f:
             configer.backbone_dataset_config = json.load(f)
         
     set_seed(configer.general_config.get("seed"))
@@ -81,190 +163,25 @@ if __name__ == "__main__":
         raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
 
     if configer.model_config.get('model_name') == "customResNet":
-        model = ResNetTrainer(configer)
-        model.init_model()
-        train_history, train_size, val_size, model_param_count = model.train()
-
-        train_log = [
-        {
-            "epoch": train_history["epoch"][i],
-            "train_loss": train_history["train_loss"][i],
-            "train_accuracy": train_history["train_accuracy"][i],
-            "val_loss": train_history["val_loss"][i],
-            "val_accuracy": train_history["val_accuracy"][i],
-            "lr": train_history["lr"][i],
-        }
-        for i in range(len(train_history["epoch"]))
-        ]
-        
-        output_dict = {
-            "metadata": {
-                "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
-                "model": {
-                    "name": configer.model_config.get("model_name"),
-                    "layers_num": configer.model_config.get("layers_num"),
-                    "block_size": configer.model_config.get("block_size"),
-                    "param_count": model_param_count,
-                    "checkpoints_metric": configer.model_config.get("checkpoints_metric")
-                    },
-                "dataset": {
-                    "name": configer.dataset_config.get("dataset_name"),
-                    "img_size": configer.dataset_config.get("img_size"),
-                    "train_size": train_size,
-                    "val_size": val_size,
-                    "class_size": len(configer.dataset_config.get("selected_classes")),
-                    "selected_classes": configer.dataset_config.get("selected_classes")
-                    },
-                "device": configer.device,
-                "seed": configer.general_config.get("seed"),
-                "workers": configer.model_config.get("workers"),
-                "batch_size": configer.model_config.get("batch_size"),
-                "solver_type": configer.model_config.get("solver_type")
-                },
-            "summary": {
-                "best_val_" + configer.model_config.get("checkpoints_metric"): max(train_history["val_" + configer.model_config.get("checkpoints_metric")]),
-                "best_epoch": train_history["epoch"][train_history["val_" + configer.model_config.get("checkpoints_metric")].index(max(train_history["val_" + configer.model_config.get("checkpoints_metric")]))],
-                "final_train_" + configer.model_config.get("checkpoints_metric"): train_history["train_" + configer.model_config.get("checkpoints_metric")][-1],
-                "final_val_" + configer.model_config.get("checkpoints_metric"): train_history["val_" + configer.model_config.get("checkpoints_metric")][-1],
-                },
-            "train_log": train_log
-        }
-
+        trainer = ResNetTrainer(configer)
     elif configer.model_config.get('model_name') == "customUNet":
         if configer.model_config.get('backbone_model_name') is None:
-            model = UNetTrainer(configer)
-            model.init_model()
-            train_history, train_size, val_size, model_param_count = model.train()
-
-            train_log = [
-            {
-                "epoch": train_history["epoch"][i],
-                "train_loss": train_history["train_loss"][i],
-                "train_dice": train_history["train_dice"][i],
-                "train_iou": train_history["train_iou"][i],
-                "train_accuracy": train_history["train_accuracy"][i],
-                "val_loss": train_history["val_loss"][i],
-                "val_dice": train_history["val_dice"][i],
-                "val_iou": train_history["val_iou"][i],
-                "val_accuracy": train_history["val_accuracy"][i],
-                "lr": train_history["lr"][i],
-            }
-            for i in range(len(train_history["epoch"]))
-            ]
-            backbone_model_param_count = None
-            backbone_train_size = 0
-            backbone_val_size = 0
-            output_dict = {
-                "metadata": {
-                    "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
-                    "model": {
-                        "name": configer.model_config.get("model_name"),
-                        "layers_num": configer.model_config.get("feature_list"),
-                        "param_count": model_param_count
-                        },
-                    "backbone_model": {
-                        "name": configer.model_config.get('backbone_model_name'),
-                        "backbone_param_count": backbone_model_param_count
-                        },
-                    "dataset": {
-                        "name": configer.dataset_config.get("dataset_name"),
-                        "img_size": configer.dataset_config.get("img_size"),
-                        "train_size": train_size,
-                        "val_size": val_size
-                        },
-                    '''
-                    "backbone_dataset": {
-                        "name": configer.backbone_dataset_config.get("dataset_name"),
-                        "img_size": configer.backbone_dataset_config.get("img_size"),
-                        "train_size": backbone_train_size,
-                        "val_size": backbone_val_size,
-                        "class_size": len(configer.backbone_dataset_config.get("selected_classes")),
-                        "selected_classes": configer.backbone_dataset_config.get("selected_classes")
-                        },
-                    '''
-                    "device": configer.device,
-                    "seed": configer.general_config.get("seed"),
-                    "workers": configer.model_config.get("workers"),
-                    "batch_size": configer.model_config.get("batch_size"),
-                    "solver_type": configer.model_config.get("solver_type")
-                    },
-                "summary": {
-                    "best_val_" + configer.model_config.get("checkpoints_metric"): max(train_history["val_" + configer.model_config.get("checkpoints_metric")]),
-                    "best_epoch": train_history["epoch"][train_history["val_" + configer.model_config.get("checkpoints_metric")].index(max(train_history["val_" + configer.model_config.get("checkpoints_metric")]))],
-                    "final_train_" + configer.model_config.get("checkpoints_metric"): train_history["train_" + configer.model_config.get("checkpoints_metric")][-1],
-                    "final_val_" + configer.model_config.get("checkpoints_metric"): train_history["val_" + configer.model_config.get("checkpoints_metric")][-1],
-                    },
-                "train_log": train_log
-            }
-        '''
-        else:
-            model = UNetBacboneTrainer(configer)
-            model.init_model()
-            train_history, train_size, val_size, model_param_count = model.train()
-
-            train_log = [
-            {
-                "epoch": train_history["epoch"][i],
-                "train_loss": train_history["train_loss"][i],
-                "train_dice": train_history["train_dice"][i],
-                "train_iou": train_history["train_iou"][i],
-                "train_accuracy": train_history["train_accuracy"][i],
-                "val_loss": train_history["val_loss"][i],
-                "val_dice": train_history["val_dice"][i],
-                "val_iou": train_history["val_iou"][i],
-                "val_accuracy": train_history["val_accuracy"][i],
-                "lr": train_history["lr"][i],
-            }
-            for i in range(len(train_history["epoch"]))
-            ]
-            
-            output_dict = {
-                "metadata": {
-                    "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
-                    "model": {
-                        "name": configer.get("model", "name"),
-                        "param_count": model_param_count
-                        },
-                    "backbone_model": {
-                        "name": configer.get("model", "name"),
-                        "param_count": model_param_count
-                        },
-                    "dataset": {
-                        "name": configer.get("dataset", "name"),
-                        "img_size": configer.get("dataset", "img_size"),
-                        "train_size": train_size,
-                        "val_size": val_size
-                        },
-                    "backbone_dataset": {
-                        "name": configer.get("dataset", "name"),
-                        "img_size": configer.get("dataset", "img_size"),
-                        "train_size": train_size,
-                        "val_size": val_size,
-                        "class_size": len(configer.get("dataset", "selected_classes")),
-                        "selected_classes": configer.get("dataset", "selected_classes")
-                        },
-                    "device": configer.device,
-                    "workers": configer.get("data", "workers"),
-                    "batch_size": configer.get("data", "batch_size"),
-                    "solver": configer.get("solver", "type"),
-                    "seed": configer.get("seed")
-                    },
-                "summary": {
-                    "best_val_dice": max(train_history["val_dice"]),
-                    "best_epoch": train_history["epoch"][train_history["val_dice"].index(max(train_history["val_dice"]))],
-                    "final_train_dice": train_history["train_dice"][-1],
-                    "final_val_dice": train_history["val_dice"][-1],
-                    },
-                "train_log": train_log
-            }
-        '''
+            trainer = UNetTrainer(configer)
     else:
         raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
     
+    trainer.init_model()
+    train_history, train_size, val_size, model_param_count = trainer.train()
     
     logs_dir = Path(configer.general_config.get("logs_dir"))
-    if not os.path.exists(logs_dir):
-        os.makedirs(logs_dir)
+    logs_dir.mkdir(parents=True, exist_ok=True)
     
+    output_dict = build_output_dict(
+        configer = configer,
+        train_history = train_history,
+        train_size = train_size,
+        val_size = val_size,
+        model_param_count = model_param_count,
+        backbone_info = None)
     with open(logs_dir / (configer.output_file_name + '.json'), "w") as f:
         json.dump(output_dict, f, indent=4)
