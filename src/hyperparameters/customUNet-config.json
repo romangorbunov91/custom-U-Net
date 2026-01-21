@@ -3,7 +3,7 @@
   "feature_list": [32, 64, 128, 256],
   "checkpoints_save_policy": "best",
   "checkpoints_metric": "dice",
-  "early_stop_number": 0,
+  "early_stop_number": 20,
   "dataset_name": "moon-segmentation-binary",
   "workers": 4,
   "input_size": [3, 128, 128],
@@ -11,7 +11,7 @@
   "weight_decay": 0.00001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 5,
+  "epochs": 10,
   "backbone_model_name": null,
   "backbone_tune_epoch": 2
 }
