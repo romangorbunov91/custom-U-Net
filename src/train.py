@@ -31,7 +31,6 @@ def worker_init_fn(worker_id):
 mean_norm = [0.485, 0.456, 0.406]
 std_norm = [0.229, 0.224, 0.225]
 
-
 class MetricsHistory:
     def initialize_metrics(self, metric_names):
         """Call this in __init__ of your main class."""
@@ -166,7 +165,9 @@ class ResNetTrainer(MetricsHistory):
                     ),
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=True,
-                num_workers=self.configer.model_config.get("workers"))
+                num_workers=self.configer.model_config.get("workers"),
+                worker_init_fn=worker_init_fn,
+                pin_memory=True)
             
             self.val_loader = DataLoader(
                 TinyImageNetDataset(
@@ -177,7 +178,9 @@ class ResNetTrainer(MetricsHistory):
                     ),
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
-                num_workers=self.configer.model_config.get("workers"))
+                num_workers=self.configer.model_config.get("workers"),
+                worker_init_fn=worker_init_fn,
+                pin_memory=True)
         else:
             raise NotImplementedError(f"Dataset not supported: {self.configer.model_config.get('dataset_name')}")
         
@@ -389,6 +392,7 @@ class UNetTrainer(MetricsHistory):
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=True,
                 num_workers=self.configer.model_config.get("workers"),
+                worker_init_fn=worker_init_fn,
                 pin_memory=True)
 
             self.val_loader = DataLoader(
@@ -403,6 +407,7 @@ class UNetTrainer(MetricsHistory):
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
                 num_workers=self.configer.model_config.get("workers"),
+                worker_init_fn=worker_init_fn,
                 pin_memory=True)
         else:
             raise NotImplementedError(f"Dataset not supported: {self.configer.model_config.get('dataset_name')}")

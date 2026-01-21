@@ -10,6 +10,15 @@ import argparse
 from train import ResNetTrainer, UNetTrainer#, UNetBacboneTrainer
 from utils.configer import Configer
 
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True  # To have ~deterministic results
+        torch.backends.cudnn.benchmark = False
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--disable-cuda', action='store_true',
@@ -46,14 +55,7 @@ if __name__ == "__main__":
         with open(hyperparameters_path / (str(configer.backbone_model_config.get('dataset_name')) + "-config.json"), "r") as f:
             configer.backbone_dataset_config = json.load(f)
         
-    seed = configer.general_config.get("seed")
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.backends.cudnn.deterministic = True  # To have ~deterministic results
+    set_seed(configer.general_config.get("seed"))
 
     configer.device = configer.general_config.get("device").lower() if torch.cuda.is_available() else 'cpu'
     
