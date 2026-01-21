@@ -70,7 +70,7 @@ class ModelUtilizer(object):
 
         return optimizer, lr
 
-    def load_net(self, net):
+    def load_net(self, net, scheduler=None):
         """Loading net method. If resume is True load from provided checkpoint, if False load new DataParallel
 
             Args:
@@ -85,6 +85,7 @@ class ModelUtilizer(object):
         if self.configer.get('resume') is None:
             epoch = 0
             optim_dict = None
+            sched_dict = None
         else:
             print('Restoring checkpoint: ', self.configer.get('resume'))
             checkpoint_dict = torch.load(self.configer.get('resume'), map_location=self.device)
@@ -98,13 +99,14 @@ class ModelUtilizer(object):
 
             epoch = checkpoint_dict.get('epoch', 0)
             optim_dict = checkpoint_dict.get('optimizer', None)
+            sched_dict = checkpoint_dict.get('scheduler_state_dict', None)
             
         net = net.to(self.device)
         if self.device.type == 'cuda' and torch.cuda.device_count() > 1:
             net = nn.DataParallel(net)
-        return net, epoch, optim_dict
+        return net, epoch, optim_dict, sched_dict
 
-    def _save_net(self, net, optimizer, epoch):
+    def _save_net(self, net, optimizer, epoch, scheduler=None):
         """Saving net state method.
 
             Args:
@@ -116,7 +118,8 @@ class ModelUtilizer(object):
         state = {
             'epoch': epoch,
             'state_dict': net.state_dict(),
-            'optimizer': optimizer.state_dict()
+            'optimizer': optimizer.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict() if scheduler else None,
         }
         
         checkpoints_dir = Path(self.configer.general_config.get('checkpoints_dir')) / self.configer.get("model_name")
@@ -131,25 +134,25 @@ class ModelUtilizer(object):
    
         torch.save(state, checkpoints_dir / latest_name)
 
-    def save_all(self, metric_value, net, optimizer, epoch):
-        self._save_net(net, optimizer, epoch)
+    def save_all(self, metric_value, net, optimizer, epoch, scheduler=None):
+        self._save_net(net, optimizer, epoch, scheduler)
         return metric_value
 
-    def save_best(self, metric_value, net, optimizer, epoch):
+    def save_best(self, metric_value, net, optimizer, epoch, scheduler=None):
         if metric_value > self.best_metric_value:
             self.best_metric_value = metric_value
-            self._save_net(net, optimizer, epoch)
+            self._save_net(net, optimizer, epoch, scheduler)
             return self.best_metric_value
         else:
             return 0
 
-    def early_stop(self, metric_value, net, optimizer, epoch):
-        ret = self.save_best(metric_value, net, optimizer, epoch)
+    def early_stop(self, metric_value, net, optimizer, epoch, scheduler=None):
+        ret = self.save_best(metric_value, net, optimizer, epoch, scheduler)
         if ret > 0:
             self.last_improvement_cnt = 0
         else:
             self.last_improvement_cnt += 1
-        if self.last_improvement_cnt >= self.configer.model_cofig.get("early_stop_number"):
+        if self.last_improvement_cnt >= self.configer.model_config.get("early_stop_number"):
             return -1
         else:
             return ret
