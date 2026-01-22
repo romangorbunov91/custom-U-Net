@@ -1,4 +1,3 @@
-import os
 import torch
 import torch.nn as nn
 
@@ -123,8 +122,8 @@ class ModelUtilizer(object):
         }
         
         checkpoints_dir = Path(self.configer.general_config.get('checkpoints_dir')) / self.configer.get("model_name")
-        if not os.path.exists(checkpoints_dir):
-            os.makedirs(checkpoints_dir)
+        checkpoints_dir.mkdir(parents=True, exist_ok=True)
+
         if self.save_policy == "all":
             latest_name = '{}_epoch_{}.pth'.format(self.output_file_name, epoch)
         elif self.save_policy == "best":
