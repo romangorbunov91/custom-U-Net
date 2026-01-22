@@ -29,7 +29,7 @@ class DiceLoss(nn.Module):
         self.smooth = smooth
     
     def forward(self, predictions, targets):
-        predictions = torch.sigmoid(predictions)
+        #predictions = torch.sigmoid(predictions)
         
         # Flatten
         predictions = predictions.view(-1)
@@ -48,7 +48,8 @@ class CombinedLoss(nn.Module):
         super(CombinedLoss, self).__init__()
         self.bce_weight = bce_weight
         self.dice_weight = dice_weight
-        self.bce = nn.BCEWithLogitsLoss()
+        #self.bce = nn.BCEWithLogitsLoss()
+        self.bce = nn.BCELoss()
         self.dice = DiceLoss()
     
     def forward(self, predictions, targets):
@@ -60,7 +61,7 @@ class CombinedLoss(nn.Module):
 
 def dice_coefficient(predictions, targets, threshold=0.5, smooth=1e-6):
 
-    predictions = torch.sigmoid(predictions)
+    #predictions = torch.sigmoid(predictions)
     predictions = (predictions > threshold).float()
     
     predictions = predictions.view(-1)
@@ -74,7 +75,7 @@ def dice_coefficient(predictions, targets, threshold=0.5, smooth=1e-6):
 
 def iou_score(predictions, targets, threshold=0.5, smooth=1e-6):
 
-    predictions = torch.sigmoid(predictions)
+    #predictions = torch.sigmoid(predictions)
     predictions = (predictions > threshold).float()
     
     predictions = predictions.view(-1)
@@ -90,7 +91,7 @@ def iou_score(predictions, targets, threshold=0.5, smooth=1e-6):
 
 def pixel_accuracy(predictions, targets, threshold=0.5):
 
-    predictions = torch.sigmoid(predictions)
+    #predictions = torch.sigmoid(predictions)
     predictions = (predictions > threshold).float()
     correct = (predictions == targets).float().sum()
     total = targets.numel()
