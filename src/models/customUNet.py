@@ -79,14 +79,14 @@ class customUNetConcept(nn.Module):
             
             x = self.decoder_blocks[idx + 1](x)
 
-        output = self.final_conv(x)
-        
+        x = self.final_conv(x)
+        output = torch.sigmoid(x)
         return output
 
 def customUNet(
-    in_channels: int = 3,
-    out_channels: int = 1,
-    features: Optional[List[int]] = [64, 128, 256, 512]
+    in_channels: int,
+    out_channels: int,
+    features: Optional[List[int]]
     ):
     return customUNetConcept(
         in_channels = in_channels,
