@@ -1,6 +1,6 @@
 {
   "model_name": "customUNet",
-  "feature_list": [32, 64, 128, 256],
+  "feature_list": [18, 36, 72, 144],
   "checkpoints_save_policy": "best",
   "checkpoints_metric": "dice",
   "early_stop_number": 20,
@@ -11,7 +11,7 @@
   "weight_decay": 0.00001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 10,
+  "epochs": 20,
   "backbone_model_name": null,
   "backbone_tune_epoch": 2
 }

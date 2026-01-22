@@ -2,7 +2,7 @@
   "model_name": "customResNet",
   "layers_num": 3,
   "block_size": 2,
-  "output_channels": 256,
+  "output_channels": 144,
   "checkpoints_save_policy": "best",
   "checkpoints_metric": "accuracy",
   "early_stop_number": 0,
@@ -13,5 +13,5 @@
   "weight_decay": 0.0001,
   "solver_type": "Adam",
   "batch_size": 500,
-  "epochs": 3
+  "epochs": 10
 }
