@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from typing import List, Tuple, Optional
+from pathlib import Path
+from typing import Union, List, Tuple, Optional
 
 class BasicBlock(nn.Module):
     """
@@ -66,7 +67,7 @@ class BasicBlock(nn.Module):
         out = self.activation(out)
         return out
 
-class customResNetConcept(nn.Module):
+class _customResNet(nn.Module):
     
     def __init__(self,
                  block,
@@ -167,13 +168,17 @@ class customResNetConcept(nn.Module):
         return x
     
 def customResNet(
-    num_classes: int,
     layers_config: List[int],
     in_channels: int,
     layer0_channels: int,
-    zero_init_residual=False
+    num_classes: int,
+    pretrained: bool = False,
+    checkpoints_path: Union[str, Path] = None,
+    device: torch.device = None,
+    zero_init_residual: bool = False
     ):
-    return customResNetConcept(
+    
+    model = _customResNet(
         block = BasicBlock,
         layers_config = layers_config,
         in_channels = in_channels,
@@ -181,3 +186,19 @@ def customResNet(
         num_classes = num_classes,
         zero_init_residual = zero_init_residual
     )
+    
+    if pretrained:
+        checkpoint_dict = torch.load(checkpoints_path, map_location=device)
+        # Remove "module." from DataParallel, if present.
+        checkpoint_dict['state_dict'] = {k[len('module.'):] if k.startswith('module.') else k: v for k, v in
+                                        checkpoint_dict['state_dict'].items()}
+        try:
+            load_result = model.load_state_dict(checkpoint_dict['state_dict'], strict=False)
+            if load_result.missing_keys:
+                print(f"Missing keys: {load_result.missing_keys}")
+            if load_result.unexpected_keys:
+                print(f"Unexpected keys: {load_result.unexpected_keys}")
+        except RuntimeError as e:
+            print(f"State dict loading issues:\n{e}")
+    
+    return model
