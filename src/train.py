@@ -126,10 +126,10 @@ class ResNetTrainer(MetricsHistory):
         
         mdl_input_size = self.configer.model_config.get('input_size')
         self.net = customResNet(
-            num_classes = self.n_classes,
             layers_config = self.configer.model_config.get("layers_num")*[self.configer.model_config.get("block_size")],
             in_channels = mdl_input_size[0],
-            layer0_channels = self.configer.model_config.get("output_channels") // 2**(self.configer.model_config.get("layers_num") - 1)
+            layer0_channels = self.configer.model_config.get("output_channels") // 2**(self.configer.model_config.get("layers_num") - 1),
+            num_classes = self.n_classes
         )
 
         # Initializing training.
