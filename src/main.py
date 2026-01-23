@@ -108,31 +108,31 @@ if __name__ == "__main__":
     configer = Configer(args)
     
     # Read config-files.
-    hyperparameters_path = Path("./src/hyperparameters/")
+    hyperparameters_dir = Path("./src/hyperparameters/")
     
-    config_path = hyperparameters_path / "config.json"
+    config_path = hyperparameters_dir / "config.json"
     assert config_path.exists(), f"Config not found: {config_path}"
     with open(config_path, "r") as f:
         configer.general_config = json.load(f)
     
-    model_config_path = hyperparameters_path / f"{configer.get('model_name')}-config.json"
+    model_config_path = hyperparameters_dir / f"{configer.get('model_name')}-config.json"
     assert model_config_path.exists(), f"Config not found: {model_config_path}"
     with open(model_config_path, "r") as f:
         configer.model_config = json.load(f)
     
-    dataset_config_path = hyperparameters_path / f"{configer.get('dataset_name')}-config.json"
+    dataset_config_path = hyperparameters_dir / f"{configer.get('dataset_name')}-config.json"
     assert dataset_config_path.exists(), f"Config not found: {dataset_config_path}"
     with open(dataset_config_path, "r") as f:
         configer.dataset_config = json.load(f)
     
     if configer.get('backbone_model_name') is not None:
         
-        backbone_model_config_path = hyperparameters_path / f"{configer.get('backbone_model_name')}-config.json"
+        backbone_model_config_path = hyperparameters_dir / f"{configer.get('backbone_model_name')}-config.json"
         assert backbone_model_config_path.exists(), f"Config not found: {backbone_model_config_path}"
         with open(backbone_model_config_path, "r") as f:
             configer.backbone_model_config = json.load(f)
         
-        backbone_dataset_config_path = hyperparameters_path / f"{configer.backbone_model.get('dataset_name')}-config.json"
+        backbone_dataset_config_path = hyperparameters_dir / f"{configer.backbone_model.get('dataset_name')}-config.json"
         assert backbone_dataset_config_path.exists(), f"Config not found: {backbone_dataset_config_path}"
         with open(backbone_dataset_config_path, "r") as f:
             configer.backbone_dataset_config = json.load(f)
