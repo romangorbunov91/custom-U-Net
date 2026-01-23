@@ -71,10 +71,10 @@ python src\main.py --hypes src\hyperparameters\customUNet-config.json
 ```
 или
 ```
-python src\main.py --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_mdl_4x2_ReLU_Adam.pth
+python src\main.py --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_customResNet_3x2_classes_10.pth
 ```
 ```
-python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_mdl_4x2_ReLU_Adam.pth
+python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_customUNet.pth
 ```
 Логи обучения хранятся в [train_logs](train_logs).
 
@@ -112,3 +112,7 @@ python -m venv .venv
 ```
 pip install -r requirements.txt
 ```
+
+pretrained = True,
+checkpoints_path = Path('./checkpoints/customResNet/customResNet_3x2_classes_10.pth'),
+device = self.device
