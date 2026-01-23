@@ -1,5 +1,5 @@
 {
-  "model_name": "customUNet",
+  "model_name": "customResNetUNet",
   "feature_list": [18, 36, 72, 144],
   "checkpoints_save_policy": "best",
   "checkpoints_metric": "dice",
@@ -11,5 +11,8 @@
   "weight_decay": 0.00001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 20
+  "epochs": 20,
+  "backbone_model_dir": "customResNet",
+  "backbone_model_name": "best_customResNet_3x2_classes_10",
+  "backbone_tune_epoch": 2
 }
