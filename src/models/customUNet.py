@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from typing import List, Tuple, Optional
 
 class DoubleConv(nn.Module):
@@ -58,14 +57,12 @@ class _customUNet(nn.Module):
         skip_connections = []
 
         for encoder_block in self.encoder_blocks:
-            print('Input:', x.shape)
             x = encoder_block(x)
-            print('Encoder:', x.shape)
             skip_connections.append(x)
             x = self.pool(x)
-            print('Pool:', x.shape)
         
         x = self.bottleneck(x)
+
         # Reverse order.
         skip_connections = skip_connections[::-1]
 
@@ -73,11 +70,7 @@ class _customUNet(nn.Module):
             x = self.decoder_blocks[idx](x)
             
             skip_connection = skip_connections[idx // 2]
-            
-            if x.shape != skip_connection.shape:
-                x = F.interpolate(x, size=skip_connection.shape[2:], 
-                                mode='bilinear', align_corners=True)
-            
+
             x = torch.cat([skip_connection, x], dim=1)
             
             x = self.decoder_blocks[idx + 1](x)
