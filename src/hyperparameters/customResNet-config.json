@@ -1,6 +1,6 @@
 {
   "model_name": "customResNet",
-  "layers_num": 3,
+  "layers_num": 4,
   "block_size": 2,
   "output_channels": 144,
   "checkpoints_save_policy": "best",
