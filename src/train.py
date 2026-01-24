@@ -23,6 +23,7 @@ from datasets.MoonSegmentBinaryDataset import MoonSegmentationDataset
 from models.model_utilizer import ModelUtilizer
 from models.customResNet import customResNet
 from models.customUNet import customUNet
+from models.customResNetUNet import customResNetUNet
 
 # Setting seeds.
 def worker_init_fn(worker_id):
@@ -113,7 +114,8 @@ class ResNetTrainer(MetricsHistory):
         self.loss = None
         self.train_transforms = None
         self.val_transforms = None
-        #: int: Chosen classes to work with.
+        
+        #Chosen classes to work with.
         self.selected_classes = self.configer.dataset_config.get("selected_classes")
         self.n_classes = len(self.selected_classes)
         
@@ -125,6 +127,7 @@ class ResNetTrainer(MetricsHistory):
         self.loss = nn.CrossEntropyLoss().to(self.device)
         
         mdl_input_size = self.configer.model_config.get('input_size')
+        
         self.net = customResNet(
             layers_config = self.configer.model_config.get("layers_num")*[self.configer.model_config.get("block_size")],
             in_channels = mdl_input_size[0],
@@ -309,6 +312,10 @@ class UNetTrainer(MetricsHistory):
         self.train_augmentation = None
         self.val_augmentation = None
         self.preprocessing = None
+                
+        #Chosen classes to work with.
+        self.selected_classes = None
+        self.n_classes = None
         
         self.initialize_metrics(['loss', 'dice', 'iou', 'accuracy'])
         
@@ -318,12 +325,36 @@ class UNetTrainer(MetricsHistory):
         self.loss = CombinedLoss(bce_weight=0.5, dice_weight=0.5).to(self.device)
         
         mdl_input_size = self.configer.model_config.get('input_size')
-        self.net = customUNet(
-            in_channels = mdl_input_size[0],
-            out_channels = 1,
-            features = self.configer.model_config.get("feature_list")
-            )
-  
+        
+        if self.configer.model_config.get('model_name') == "customUNet":
+            self.net = customUNet(
+                in_channels = mdl_input_size[0],
+                out_channels = 1,
+                features = self.configer.model_config.get("feature_list")
+                )
+        elif self.configer.model_config.get('model_name') == "customResNetUNet":
+            if self.configer.model_config.get('backbone_tune_epochs') < self.configer.model_config.get('epochs'):
+                pretrained_flag = True
+            else:
+                pretrained_flag = False
+            
+            backbone_checkpoints_path = Path(   self.configer.general_config.get('checkpoints_dir')) / \
+                                                self.configer.model_config.get('backbone_model_dir') / \
+                                                self.configer.model_config.get('backbone_model_name')
+            self.net = customResNetUNet(
+                in_channels = mdl_input_size[0],
+                out_channels = 1,
+                features = self.configer.model_config.get("feature_list"),
+                backbone_layers_config = self.configer.model_config.get("backbone_layers_num")*[self.configer.model_config.get("backbone_block_size")],
+                backbone_in_channels = mdl_input_size[0],
+                backbone_layer0_channels = self.configer.model_config.get("feature_list")[-1] // 2**(self.configer.model_config.get("backbone_layers_num") - 1),
+                backbone_pretrained = pretrained_flag,
+                backbone_checkpoints_path = backbone_checkpoints_path,
+                device = self.device
+                )
+        else:
+            raise NotImplementedError(f"Model not supported: {self.configer.model_config.get('model_name')}")
+
         # Initializing training.
         self.net, self.epoch_init, optim_dict, sched_dict = self.model_utility.load_net(self.net)
         self.epoch = self.epoch_init
