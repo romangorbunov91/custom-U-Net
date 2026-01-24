@@ -24,14 +24,12 @@ class _customUNet(nn.Module):
     def __init__(self,
                 in_channels: int,
                 out_channels: int,
-                features: Optional[List[int]]
+                features: List[int]
                 ):
         super(_customUNet, self).__init__()
         
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
-        
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
         prev_channels = in_channels
         for feature in features:
@@ -40,6 +38,7 @@ class _customUNet(nn.Module):
                 )
             prev_channels = feature
 
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.bottleneck = DoubleConv(features[-1], features[-1] * 2)
 
         for feature in reversed(features):
@@ -52,17 +51,19 @@ class _customUNet(nn.Module):
 
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
         
-        print(f"Уровней encoder: {len(features)}")
-        print(f"Конфигурация каналов: {features}")
+        print(f"Encoder features by level: {features}")
     
     def forward(self, x):
 
         skip_connections = []
 
         for encoder_block in self.encoder_blocks:
+            print('Input:', x.shape)
             x = encoder_block(x)
+            print('Encoder:', x.shape)
             skip_connections.append(x)
             x = self.pool(x)
+            print('Pool:', x.shape)
         
         x = self.bottleneck(x)
         # Reverse order.
