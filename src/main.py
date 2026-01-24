@@ -7,7 +7,7 @@ from datetime import datetime
 import argparse
 from typing import Dict, List, Any, Optional
 
-from train import ResNetTrainer, UNetTrainer#, UNetBackboneTrainer
+from train import ResNetTrainer, UNetTrainer
 from utils.configer import Configer
 
 def set_seed(seed: int) -> None:
@@ -124,18 +124,6 @@ if __name__ == "__main__":
     assert dataset_config_path.exists(), f"Config not found: {dataset_config_path}"
     with open(dataset_config_path, "r") as f:
         configer.dataset_config = json.load(f)
-    
-    if configer.get('backbone_model_name') is not None:
-        
-        backbone_model_config_path = hyperparameters_dir / f"{configer.get('backbone_model_name')}-config.json"
-        assert backbone_model_config_path.exists(), f"Config not found: {backbone_model_config_path}"
-        with open(backbone_model_config_path, "r") as f:
-            configer.backbone_model_config = json.load(f)
-        
-        backbone_dataset_config_path = hyperparameters_dir / f"{configer.backbone_model.get('dataset_name')}-config.json"
-        assert backbone_dataset_config_path.exists(), f"Config not found: {backbone_dataset_config_path}"
-        with open(backbone_dataset_config_path, "r") as f:
-            configer.backbone_dataset_config = json.load(f)
         
     set_seed(configer.general_config.get("seed"))
 
@@ -149,24 +137,23 @@ if __name__ == "__main__":
             f"classes_{str(len(configer.dataset_config.get('selected_classes')))}"
         )
     elif configer.model_config.get('model_name') == "customUNet":
-        if configer.model_config.get('backbone_model_name') is None:
-            configer.output_file_name = (
-                f"{str(configer.model_config.get('model_name'))}"
-            )
-        else:
-            configer.output_file_name = (
-                f"{str(configer.model_config.get('model_name'))}_"
-                f"backbone_{str(configer.model_config.get('backbone_model_name'))}_"
-                f"finetune_last_{str(configer.model_config.get('backbone_tune_epoch'))}_epochs"
+        configer.output_file_name = (
+            f"{str(configer.model_config.get('model_name'))}"
+        )
+    elif configer.model_config.get('model_name') == "customResNetUNet":
+        configer.output_file_name = (
+            f"{str(configer.model_config.get('model_name'))}_"
+            f"backbone_{str(configer.model_config.get('backbone_model_name'))}_"
+            f"finetune_last_{str(configer.model_config.get('backbone_tune_epoch'))}_epochs"
             )
     else:
         raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
 
     if configer.model_config.get('model_name') == "customResNet":
         trainer = ResNetTrainer(configer)
-    elif configer.model_config.get('model_name') == "customUNet":
-        if configer.model_config.get('backbone_model_name') is None:
-            trainer = UNetTrainer(configer)
+    elif (configer.model_config.get('model_name') == "customUNet") or \
+        (configer.model_config.get('model_name') == "customResNetUNet"):
+        trainer = UNetTrainer(configer)
     else:
         raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
     
