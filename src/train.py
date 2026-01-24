@@ -341,13 +341,13 @@ class UNetTrainer(MetricsHistory):
             backbone_checkpoints_path = Path(   self.configer.general_config.get('checkpoints_dir')) / \
                                                 self.configer.model_config.get('backbone_model_dir') / \
                                                 self.configer.model_config.get('backbone_model_name')
+
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
                 out_channels = 1,
                 features = self.configer.model_config.get("feature_list"),
                 backbone_layers_config = self.configer.model_config.get("backbone_layers_num")*[self.configer.model_config.get("backbone_block_size")],
-                backbone_in_channels = mdl_input_size[0],
-                backbone_layer0_channels = self.configer.model_config.get("feature_list")[-1] // 2**(self.configer.model_config.get("backbone_layers_num") - 1),
+                backbone_layer0_channels = self.configer.model_config.get("feature_list")[0],
                 backbone_pretrained = pretrained_flag,
                 backbone_checkpoints_path = backbone_checkpoints_path,
                 device = self.device
@@ -362,9 +362,9 @@ class UNetTrainer(MetricsHistory):
 
         # Resuming training, restoring optimizer value.
         if optim_dict is None:
-            print(f"Starting training from scratch using {self.configer.get('solver', 'type')}.")
+            print(f"Starting training from scratch using {self.configer.model_config.get('solver_type')}.")
         else:
-            print(f"Resuming training from epoch {self.epoch} using {self.configer.get('solver', 'type')}.")
+            print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
             self.optimizer.load_state_dict(optim_dict)
         
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
