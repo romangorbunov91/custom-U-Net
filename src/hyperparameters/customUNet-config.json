@@ -11,5 +11,5 @@
   "weight_decay": 0.00001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 1
+  "epochs": 30
 }

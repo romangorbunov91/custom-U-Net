@@ -11,7 +11,7 @@
   "weight_decay": 0.0001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 2,
+  "epochs": 30,
   "backbone_model_dir": "customResNet",
   "backbone_model_name": "best_customResNet_4x2_classes_10",
   "backbone_layers_num": 4,
@@ -19,5 +19,5 @@
   "backbone_base_lr": 0.0001,
   "backbone_weight_decay": 0.00001,
   "backbone_solver_type": "Adam",
-  "backbone_tune_epochs": 2
+  "backbone_tune_epochs": 30
 }
