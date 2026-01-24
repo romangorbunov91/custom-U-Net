@@ -20,7 +20,7 @@ from datasets.TinyImageNetDataset import TinyImageNetDataset
 from datasets.MoonSegmentBinaryDataset import MoonSegmentationDataset
 
 # Import Model.
-from models.model_utilizer import ModelUtilizer
+from models.model_utilizer import load_net, update_optimizer, ModelUtilizer
 from models.customResNet import customResNet
 from models.customUNet import customUNet
 from models.customResNetUNet import customResNetUNet
@@ -105,7 +105,6 @@ class ResNetTrainer(MetricsHistory):
         print(f"Device (train.py): {self.device}")
         self.model_utility = ModelUtilizer(self.configer) #: Model utility for load, save and update optimizer
         self.net = None
-        self.lr = None
 
         # Training procedure.
         self.epoch = None
@@ -128,25 +127,24 @@ class ResNetTrainer(MetricsHistory):
         
         mdl_input_size = self.configer.model_config.get('input_size')
         
-        self.net = customResNet(
+        #checkpoints_file = Path('./checkpoints/customResNet/customResNet_4x2_classes_10.pth')
+        checkpoints_file = self.configer.get('resume')
+        if checkpoints_file is None:
+            pretrained = False
+        else:
+            pretrained = True
+
+        self.net, self.epoch_init, self.optimizer = customResNet(
             layers_config = self.configer.model_config.get("layers_num")*[self.configer.model_config.get("block_size")],
             in_channels = mdl_input_size[0],
             layer0_channels = self.configer.model_config.get("output_channels") // 2**(self.configer.model_config.get("layers_num") - 1),
-            num_classes = self.n_classes
+            num_classes = self.n_classes,
+            pretrained = pretrained,
+            checkpoints_file = self.configer.get('resume'),
+            model_config = self.configer.model_config,
+            device = self.device
         )
-
-        # Initializing training.
-        self.net, self.epoch_init, optim_dict, _ = self.model_utility.load_net(self.net)
         self.epoch = self.epoch_init
-        self.optimizer, self.lr = self.model_utility.update_optimizer(self.net)
-
-        # Resuming training, restoring optimizer value.
-        if optim_dict is None:
-            print(f"Starting training from scratch using {self.configer.model_config.get('solver_type')}.")
-        else:
-            print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
-            self.optimizer.load_state_dict(optim_dict)
-        
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model parameters: {self.model_size}")
         
@@ -356,16 +354,25 @@ class UNetTrainer(MetricsHistory):
             raise NotImplementedError(f"Model not supported: {self.configer.model_config.get('model_name')}")
 
         # Initializing training.
-        self.net, self.epoch_init, optim_dict, sched_dict = self.model_utility.load_net(self.net)
+        self.net, self.epoch_init, optim_dict, sched_dict = load_net(
+            net = self.net,
+            checkpoints_file = self.configer.get('resume'),
+            device = self.device
+            )
         self.epoch = self.epoch_init
-        self.optimizer, self.lr = self.model_utility.update_optimizer(self.net)
+        self.optimizer = update_optimizer(
+            net = self.net,
+            optim = self.configer.model_config.get('solver_type'),
+            decay = self.configer.model_config.get('weight_decay'),
+            lr = self.configer.model_config.get('base_lr')
+            )
 
         # Resuming training, restoring optimizer value.
-        if optim_dict is None:
-            print(f"Starting training from scratch using {self.configer.model_config.get('solver_type')}.")
-        else:
-            print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
+        if optim_dict is not None:
             self.optimizer.load_state_dict(optim_dict)
+            print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
+        else:
+            print(f"Starting training from scratch using {self.configer.model_config.get('solver_type')}.")
         
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
