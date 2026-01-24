@@ -22,7 +22,7 @@ class BasicBlock(nn.Module):
             stride: int
         ):
 
-        super().__init__()
+        super(BasicBlock, self).__init__()
 
         if kernel_size % 2 == 0:
             raise ValueError("kernel_size must be odd to preserve spatial dimensions.")
@@ -77,21 +77,21 @@ class _customResNet(nn.Module):
                  num_classes: int,
                  zero_init_residual: bool = False):
         
-        super().__init__()
+        super(_customResNet, self).__init__()
         
-        self.layer0_channels = layer0_channels
-
+        self.num_classes = num_classes
+        
         # Initial layers.        
         self.conv1 = nn.Conv2d(
             in_channels = in_channels,
-            out_channels = self.layer0_channels,
+            out_channels = layer0_channels,
             kernel_size = 7,
             stride = 2,
             padding = 3,
             bias = False
         )
         
-        self.bn1 = nn.BatchNorm2d(self.layer0_channels)
+        self.bn1 = nn.BatchNorm2d(layer0_channels)
         self.activation = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
 
@@ -104,17 +104,18 @@ class _customResNet(nn.Module):
                 extend_flag = True
             layer = self._make_layer(
                 block = block,
-                out_channels = self.layer0_channels * 2**order,
+                out_channels = layer0_channels * 2**order,
                 layer_size = layer_num,
                 extend_flag = extend_flag
                 )
             self.layers.append(layer)
 
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(
-            in_features = self.layer0_channels * 2**(len(layers_config)-1),
-            out_features = num_classes
-            )
+        if self.num_classes is not None:
+            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+            self.fc = nn.Linear(
+                in_features = layer0_channels * 2**(len(layers_config)-1),
+                out_features = num_classes
+                )
 
         # Init weights (optional, but recommended).
         for module in self.modules():
@@ -161,10 +162,11 @@ class _customResNet(nn.Module):
         
         for layer in self.layers:
             x = layer(x)
-
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1) # безопасный аналог x.view(x.size(0), -1).
-        x = self.fc(x)
+        
+        if self.num_classes is not None:
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1) # безопасный аналог x.view(x.size(0), -1).
+            x = self.fc(x)
         return x
     
 def customResNet(
