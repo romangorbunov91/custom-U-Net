@@ -33,6 +33,7 @@ class _customResNetUNet(nn.Module):
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
         
+        # Use the input of `ResNet` as the very 1st encoder.
         self.encoder_blocks.append(
             nn.Sequential(
                 backbone.conv1,
@@ -41,11 +42,10 @@ class _customResNetUNet(nn.Module):
                 backbone.maxpool
             )
         )
-
+        # Skip layer[0].
         for layer in backbone.layers[1:]:
             self.encoder_blocks.append(layer)
 
-        #self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.bottleneck = DoubleConv(features[-1], features[-1] * 2)
 
         for feature in reversed(features):
@@ -65,10 +65,12 @@ class _customResNetUNet(nn.Module):
         skip_connections = []
         
         for idx, encoder_block in enumerate(self.encoder_blocks):
-            print('Input:', x.shape)
+            encoder_in_shape = x.shape
             x = encoder_block(x)
-            print('Encoder:', x.shape)
-            skip_connections.append(x)
+            skip_connections.append(
+                F.interpolate(x, size=encoder_in_shape[2:],
+                            mode='bilinear', align_corners=True)
+                            )
         
         x = self.bottleneck(x)
         
@@ -79,11 +81,7 @@ class _customResNetUNet(nn.Module):
             x = self.decoder_blocks[idx](x)
             
             skip_connection = skip_connections[idx // 2]
-            
-            if x.shape != skip_connection.shape:
-                x = F.interpolate(x, size=skip_connection.shape[2:], 
-                                mode='bilinear', align_corners=True)
-            
+                     
             x = torch.cat([skip_connection, x], dim=1)
             
             x = self.decoder_blocks[idx + 1](x)
