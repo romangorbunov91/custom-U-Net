@@ -5,11 +5,36 @@
 
 ### Tiny ImageNet-200
 Создан датакласс [TinyImageNetDataset.py](src/datasets/TinyImageNetDataset.py), наследующий от `torch.utils.data.Dataset` следующие методы:
-- `__init__`: инициализация путей к данным и аннотациям, загрузка тренировочного и валидационного датасетов по выбранным классам;
+- `__init__`: инициализация путей к изображениям и аннотациям по выбранным классам и `train`/`val`;
 - `__len__`: возврат количества примеров в датасете;
 - `__getitem__`: загрузка и возврат одного примера (изображение + метка).
 
-Размер изменен к 128×128 в `transforms`:
+### MOON_SEGMENTATION_BINARY
+Создан датакласс [MoonSegmentBinaryDataset.py](src/datasets/MoonSegmentBinaryDataset.py), наследующий от `torch.utils.data.Dataset` следующие методы:
+- `__init__`: инициализация путей к изображениям и маскам;
+- `__len__`: возврат количества примеров в датасете;
+- `__getitem__`: загрузка и возврат одного примера (изображение + маска).
+
+
+## Часть 1. Классификатор 128×128
+
+В основу классификатора положена архитектура из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18) в конфигурации:
+- слои модели: `layers_config=[2, 2, 2, 2]` (`"layers_num": 4`, `"block_size": 2`);
+- функция активации: `activation=ReLU`;
+- количество каналов на входе первого базового слоя: `layer0_channels=18`;
+- полная конфигурация каналов: `[18, 36, 72, 144]`;
+- количество параметров модели: **889 732**.
+
+Модель обучена на `Tiny ImageNet-200`, количество классов: `num_classes=10`.
+Архитектура модифицирована таким образом, чтобы
+pretrained = True/False
+num_classes = None
+
+
+
+Аугментации:
+
+
 
 ```
 self.train_transforms = transforms.Compose([
@@ -28,19 +53,13 @@ self.val_transforms = transforms.Compose([
     normalize,
 ])
 ```
-где `mdl_img_size = [3, 128, 128]`.
-
-### MOON_SEGMENTATION_BINARY
-
-
-
-## Часть 1. Классификатор 128×128
+где `mdl_img_size = [3, 128, 128]` (изображения приводятся из 64x64 к размеру 128×128).
 
 ### 2.4. Скрипт обучения
 
-В [???.py](src/models/???.py) реализован `class customResNet18` с возможностью инициализации архитектуры модели под следующие входные параметры:
+В [???.py](src/models/???.py) реализован `class customResNet` с возможностью инициализации архитектуры модели под следующие входные параметры:
 - `num_classes` - количество классов на выходе; например, `num_classes=10`;
-- `layers_config` - слои модели в формате списка; например, `[2, 2, 2]` - `"layers_num": 3`, `"block_size": 2`;
+- `layers_config` - слои модели в формате списка; например, `[2, 2, 2, 2]` - `"layers_num": 4`, `"block_size": 2`;
 - `activation` - функция активации (`ReLU`, `LeakyReLU`, `ELU`, или `GELU`);
 - `in_channels` - количество входных каналов; например, для RGB-картинок `in_channels=3`;
 - `layer0_channels` - количество каналов на входе первого базового слоя.
@@ -54,7 +73,7 @@ self.val_transforms = transforms.Compose([
 - политика обучения: `save_policy` - "all", "best" (политика "early_stop" выбирается установкой параметра "early_stop_number" > 0).
 
 #### Обучение
-Обучение реализовано в [train.py](src/train.py) в виде класса `ResNet18Trainer` со следующими методами:
+Обучение реализовано в [train.py](src/train.py) в виде класса `ResNetTrainer` со следующими методами:
 - `__init__` - инициализация переменных класса в соответствии с гиперпараметрами из файла конфигурации проекта;
 - `init_model` - установка функции ошибки, инициализация/загрузка модели, загрузка датасета;
 - `__train` - обучение по батчам;
@@ -69,9 +88,12 @@ python src\main.py --hypes src\hyperparameters\customResNet-config.json
 ```
 python src\main.py --hypes src\hyperparameters\customUNet-config.json
 ```
+```
+python src\main.py --hypes src\hyperparameters\customResNetUNet-config.json
+```
 или
 ```
-python src\main.py --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_customResNet_3x2_classes_10.pth
+python src\main.py --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_customResNet_4x2_classes_10.pth
 ```
 ```
 python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_customUNet.pth
@@ -85,6 +107,11 @@ python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume c
   style="background-color: white; padding: 0;
   width="100%" />
 </p>
+
+## Часть 2. Базовая U-Net на "Луне"
+
+
+## Часть 3. U-Net с бэкбоном из классификатора
 
 # Выводы
 - В сравнении 
@@ -112,7 +139,3 @@ python -m venv .venv
 ```
 pip install -r requirements.txt
 ```
-
-pretrained = True,
-checkpoints_path = Path('./checkpoints/customResNet/customResNet_3x2_classes_10.pth'),
-device = self.device
