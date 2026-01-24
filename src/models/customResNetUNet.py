@@ -61,7 +61,7 @@ class _customResNetUNet(nn.Module):
             x = self.pool(x)
         
         x = self.bottleneck(x)
-        
+        # Reverse order.
         skip_connections = skip_connections[::-1]
 
         for idx in range(0, len(self.decoder_blocks), 2):
@@ -84,12 +84,11 @@ class _customResNetUNet(nn.Module):
 def customResNetUNet(
     in_channels: int,
     out_channels: int,
-    features: Optional[List[int]],
+    features: List[int],
     backbone_layers_config: List[int],
     backbone_in_channels: int,
     backbone_layer0_channels: int,
-    backbone_num_classes: int,
-    backbone_pretrained: bool = False,
+    backbone_pretrained: bool,
     backbone_checkpoints_path: Union[str, Path] = None,
     device: torch.device = None,
     backbone_zero_init_residual: bool = False
@@ -99,7 +98,7 @@ def customResNetUNet(
             layers_config = backbone_layers_config,
             in_channels = backbone_in_channels,
             layer0_channels = backbone_layer0_channels,
-            num_classes = backbone_num_classes,
+            num_classes = None,
             pretrained = backbone_pretrained,
             checkpoints_path = Path(backbone_checkpoints_path),
             device = device,

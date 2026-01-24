@@ -35,7 +35,9 @@ class _customUNet(nn.Module):
 
         prev_channels = in_channels
         for feature in features:
-            self.encoder_blocks.append(DoubleConv(prev_channels, feature))
+            self.encoder_blocks.append(
+                DoubleConv(prev_channels, feature)
+                )
             prev_channels = feature
 
         self.bottleneck = DoubleConv(features[-1], features[-1] * 2)
@@ -63,7 +65,7 @@ class _customUNet(nn.Module):
             x = self.pool(x)
         
         x = self.bottleneck(x)
-        
+        # Reverse order.
         skip_connections = skip_connections[::-1]
 
         for idx in range(0, len(self.decoder_blocks), 2):
@@ -86,7 +88,7 @@ class _customUNet(nn.Module):
 def customUNet(
     in_channels: int,
     out_channels: int,
-    features: Optional[List[int]]
+    features: List[int]
     ):
     return _customUNet(
         in_channels = in_channels,
