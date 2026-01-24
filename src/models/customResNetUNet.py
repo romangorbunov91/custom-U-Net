@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pathlib import Path
 from typing import Union, List, Tuple, Optional
-from models.customResNet import customResNet
+from .customResNet import customResNet
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -24,18 +24,28 @@ class DoubleConv(nn.Module):
 class _customResNetUNet(nn.Module):
 
     def __init__(self,
-                in_channels: int,
                 out_channels: int,
-                features: Optional[List[int]],
+                features: List[int],
                 backbone: nn.Module
                 ):
         super(_customResNetUNet, self).__init__()
-        
-        self.encoder_blocks = backbone.layers
+
+        self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
         
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder_blocks.append(
+            nn.Sequential(
+                backbone.conv1,
+                backbone.bn1,
+                backbone.activation,
+                backbone.maxpool
+            )
+        )
 
+        for layer in backbone.layers[1:]:
+            self.encoder_blocks.append(layer)
+
+        #self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.bottleneck = DoubleConv(features[-1], features[-1] * 2)
 
         for feature in reversed(features):
@@ -48,19 +58,20 @@ class _customResNetUNet(nn.Module):
 
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
         
-        print(f"Уровней encoder: {len(features)}")
-        print(f"Конфигурация каналов: {features}")
+        print(f"Encoder features by level: {features}")
     
     def forward(self, x):
 
         skip_connections = []
-
-        for encoder_block in self.encoder_blocks:
+        
+        for idx, encoder_block in enumerate(self.encoder_blocks):
+            print('Input:', x.shape)
             x = encoder_block(x)
+            print('Encoder:', x.shape)
             skip_connections.append(x)
-            x = self.pool(x)
         
         x = self.bottleneck(x)
+        
         # Reverse order.
         skip_connections = skip_connections[::-1]
 
@@ -86,7 +97,6 @@ def customResNetUNet(
     out_channels: int,
     features: List[int],
     backbone_layers_config: List[int],
-    backbone_in_channels: int,
     backbone_layer0_channels: int,
     backbone_pretrained: bool,
     backbone_checkpoints_path: Union[str, Path] = None,
@@ -96,7 +106,7 @@ def customResNetUNet(
     
     customResNetModel = customResNet(
             layers_config = backbone_layers_config,
-            in_channels = backbone_in_channels,
+            in_channels = in_channels,
             layer0_channels = backbone_layer0_channels,
             num_classes = None,
             pretrained = backbone_pretrained,
@@ -104,9 +114,11 @@ def customResNetUNet(
             device = device,
             zero_init_residual = backbone_zero_init_residual
         )
-    
+    customResNetModel = customResNetModel.to(device)
+    if device.type == 'cuda' and torch.cuda.device_count() > 1:
+        customResNetModel = nn.DataParallel(customResNetModel)
+
     return _customResNetUNet(
-        in_channels = in_channels,
         out_channels = out_channels,
         features = features,
         backbone = customResNetModel
