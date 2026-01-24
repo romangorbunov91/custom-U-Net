@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from pathlib import Path
+from .model_utilizer import load_net, update_optimizer
 from typing import Union, List, Tuple, Optional
 
 class BasicBlock(nn.Module):
@@ -175,12 +176,13 @@ def customResNet(
     layer0_channels: int,
     num_classes: int,
     pretrained: bool = False,
-    checkpoints_path: Union[str, Path] = None,
+    checkpoints_file: Union[str, Path] = None,
+    model_config = None,
     device: torch.device = None,
     zero_init_residual: bool = False
     ):
     
-    model = _customResNet(
+    net = _customResNet(
         block = BasicBlock,
         layers_config = layers_config,
         in_channels = in_channels,
@@ -188,19 +190,26 @@ def customResNet(
         num_classes = num_classes,
         zero_init_residual = zero_init_residual
     )
+      
+    if not pretrained:
+        checkpoints_file = None
     
-    if pretrained:
-        checkpoint_dict = torch.load(checkpoints_path, map_location=device)
-        # Remove "module." from DataParallel, if present.
-        checkpoint_dict['state_dict'] = {k[len('module.'):] if k.startswith('module.') else k: v for k, v in
-                                        checkpoint_dict['state_dict'].items()}
-        try:
-            load_result = model.load_state_dict(checkpoint_dict['state_dict'], strict=False)
-            if load_result.missing_keys:
-                print(f"Missing keys: {load_result.missing_keys}")
-            if load_result.unexpected_keys:
-                print(f"Unexpected keys: {load_result.unexpected_keys}")
-        except RuntimeError as e:
-            print(f"State dict loading issues:\n{e}")
-    
-    return model
+    net, epoch, optim_dict, _ = load_net(
+        net = net,
+        checkpoints_file = checkpoints_file,
+        device = device
+        )
+
+    optimizer = update_optimizer(
+        net = net,
+        optim = model_config.get('solver_type'),
+        decay = model_config.get('weight_decay'),
+        lr = model_config.get('base_lr')
+        )
+    if optim_dict is not None:
+        optimizer.load_state_dict(optim_dict)
+        print(f"Resuming training 'customResNet' from epoch {epoch} using {model_config.get('solver_type')}.")
+    else:
+        print(f"Starting training 'customResNet' from scratch using {model_config.get('solver_type')}.")
+        
+    return net, epoch, optimizer
