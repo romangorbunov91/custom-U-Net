@@ -7,9 +7,9 @@
   "dataset_name": "moon-segmentation-binary",
   "workers": 4,
   "input_size": [3, 128, 128],
-  "base_lr": 0.0001,
-  "weight_decay": 0.00001,
+  "base_lr": 0.001,
+  "weight_decay": 0.0001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 30
+  "epochs": 50
 }
