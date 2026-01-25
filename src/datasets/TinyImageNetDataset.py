@@ -50,7 +50,7 @@ class TinyImageNetDataset(Dataset):
         if split == 'train':
             for cls_name in self.class_names:
                 img_dir = data_dir / cls_name / 'images'
-                for img_name in os.listdir(img_dir):
+                for img_name in sorted(os.listdir(img_dir)):
                     img_path = img_dir / img_name
                     self.samples.append((img_path, self.class_to_idx[cls_name]))
 
