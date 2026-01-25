@@ -141,10 +141,12 @@ if __name__ == "__main__":
             f"{str(configer.model_config.get('model_name'))}"
         )
     elif configer.model_config.get('model_name') == "customResNetUNet":
+        backbone_name = str(configer.model_config.get('backbone_model_name'))
+        backbone_name_no_ext = Path(backbone_name).stem
         configer.output_file_name = (
             f"{str(configer.model_config.get('model_name'))}_"
-            f"backbone_{str(configer.model_config.get('backbone_model_name'))}_"
-            f"finetune_last_{str(configer.model_config.get('backbone_tune_epoch'))}_epochs"
+            f"backbone_{backbone_name_no_ext}_"
+            f"finetune_last_{str(configer.model_config.get('backbone_tune_epochs'))}_epochs"
             )
     else:
         raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
