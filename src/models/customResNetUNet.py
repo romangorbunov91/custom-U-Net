@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pathlib import Path
-from typing import Union, List, Tuple, Optional
+from typing import Union, List, Dict, Tuple, Optional
 from .customResNet import customResNet
 
 class DoubleConv(nn.Module):
