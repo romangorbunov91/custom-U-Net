@@ -97,18 +97,18 @@ def customResNetUNet(
     backbone_layers_config: List[int],
     backbone_layer0_channels: int,
     backbone_pretrained: bool,
-    backbone_checkpoints_path: Union[str, Path] = None,
+    backbone_checkpoints_file: Union[str, Path] = None,
     device: torch.device = None,
     backbone_zero_init_residual: bool = False
     ):
     
-    customResNetModel = customResNet(
+    customResNetModel, _, _ = customResNet(
             layers_config = backbone_layers_config,
             in_channels = in_channels,
             layer0_channels = backbone_layer0_channels,
             num_classes = None,
             pretrained = backbone_pretrained,
-            checkpoints_path = Path(backbone_checkpoints_path),
+            checkpoints_file = Path(backbone_checkpoints_file),
             device = device,
             zero_init_residual = backbone_zero_init_residual
         )

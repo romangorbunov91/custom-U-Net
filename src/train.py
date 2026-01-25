@@ -141,7 +141,7 @@ class ResNetTrainer(MetricsHistory):
             pretrained = pretrained_flag,
             checkpoints_file = checkpoints_file,
             device = self.device
-        )
+            )
         self.epoch = self.epoch_init
 
         # Set optimizer.
@@ -348,14 +348,9 @@ class UNetTrainer(MetricsHistory):
             else:
                 pretrained_flag = False
             
-            backbone_checkpoints_path = Path(   self.configer.general_config.get('checkpoints_dir')) / \
+            backbone_checkpoints_file = Path(   self.configer.general_config.get('checkpoints_dir')) / \
                                                 self.configer.model_config.get('backbone_model_dir') / \
                                                 self.configer.model_config.get('backbone_model_name')
-            backbone_optim_config = {
-                'solver_type': self.configer.model_config.get('backbone_solver_type'),
-                'weight_decay': self.configer.model_config.get('backbone_weight_decay'),
-                'base_lr': self.configer.model_config.get('backbone_base_lr')
-            }
 
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
@@ -364,8 +359,7 @@ class UNetTrainer(MetricsHistory):
                 backbone_layers_config = self.configer.model_config.get("backbone_layers_num")*[self.configer.model_config.get("backbone_block_size")],
                 backbone_layer0_channels = self.configer.model_config.get("feature_list")[0],
                 backbone_pretrained = pretrained_flag,
-                backbone_checkpoints_path = backbone_checkpoints_path,
-                backbone_model_config = backbone_optim_config,
+                backbone_checkpoints_file = backbone_checkpoints_file,
                 device = self.device
                 )
         else:
