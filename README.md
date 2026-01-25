@@ -117,6 +117,8 @@ python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume c
 
 ## Часть 3. U-Net с бэкбоном из классификатора
 
+- количество параметров модели: **2 963 395**.
+
 # Выводы
 - В сравнении 
 
