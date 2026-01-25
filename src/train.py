@@ -110,7 +110,7 @@ class ResNetTrainer(MetricsHistory):
         self.epoch = None
         self.optimizer = None
         self.scheduler = None
-        self.loss = None
+        self.loss_func = None
         self.train_transforms = None
         self.val_transforms = None
         
@@ -123,28 +123,40 @@ class ResNetTrainer(MetricsHistory):
     def init_model(self):
         """Initialize model and other data for procedure"""
         
-        self.loss = nn.CrossEntropyLoss().to(self.device)
+        self.loss_func = nn.CrossEntropyLoss().to(self.device)
         
         mdl_input_size = self.configer.model_config.get('input_size')
         
-        #checkpoints_file = Path('./checkpoints/customResNet/customResNet_4x2_classes_10.pth')
         checkpoints_file = self.configer.get('resume')
         if checkpoints_file is None:
-            pretrained = False
+            pretrained_flag = False
         else:
-            pretrained = True
+            pretrained_flag = True
 
-        self.net, self.epoch_init, self.optimizer = customResNet(
+        self.net, self.epoch_init, optim_dict = customResNet(
             layers_config = self.configer.model_config.get("layers_num")*[self.configer.model_config.get("block_size")],
             in_channels = mdl_input_size[0],
             layer0_channels = self.configer.model_config.get("output_channels") // 2**(self.configer.model_config.get("layers_num") - 1),
             num_classes = self.n_classes,
-            pretrained = pretrained,
-            checkpoints_file = self.configer.get('resume'),
-            model_config = self.configer.model_config,
+            pretrained = pretrained_flag,
+            checkpoints_file = checkpoints_file,
             device = self.device
         )
         self.epoch = self.epoch_init
+
+        # Set optimizer.
+        self.optimizer = update_optimizer(
+            net = self.net,
+            optim = self.configer.model_config.get('solver_type'),
+            decay = self.configer.model_config.get('weight_decay'),
+            lr = self.configer.model_config.get('base_lr')
+            )
+        if optim_dict is not None:
+            self.optimizer.load_state_dict(optim_dict)
+            print(f"Resuming training {self.configer.model_config.get('model_name')} from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
+        else:
+            print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
+
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model parameters: {self.model_size}")
         
@@ -166,7 +178,7 @@ class ResNetTrainer(MetricsHistory):
                 transforms.Normalize(mean=mean_norm, std=std_norm)
             ])
         else:
-            raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
+            raise NotImplementedError(f"Dataset not supported: {self.dataset}")
 
         # Setting Dataloaders.
         if self.dataset == "tiny-imagenet-200":
@@ -193,10 +205,9 @@ class ResNetTrainer(MetricsHistory):
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
                 num_workers=self.configer.model_config.get("workers"),
-                worker_init_fn=worker_init_fn,
                 pin_memory=True)
         else:
-            raise NotImplementedError(f"Dataset not supported: {self.configer.model_config.get('dataset_name')}")
+            raise NotImplementedError(f"Dataset not supported: {self.dataset}")
         
         print(f"Train. size: {len(self.train_loader.dataset)}")
         print(f"Valid. size: {len(self.val_loader.dataset)}")
@@ -204,6 +215,7 @@ class ResNetTrainer(MetricsHistory):
               
     def __train(self):
         """Train function for every epoch."""
+           
         self.net.train()
         for data_tuple in tqdm(self.train_loader, desc="Train"):
 
@@ -212,7 +224,7 @@ class ResNetTrainer(MetricsHistory):
             output = self.net(inputs)
 
             self.optimizer.zero_grad()
-            loss = self.loss(output, gt)
+            loss = self.loss_func(output, gt)
             loss.backward()
 
             torch.nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
@@ -238,7 +250,7 @@ class ResNetTrainer(MetricsHistory):
 
                 output = self.net(inputs)
                 
-                loss = self.loss(output, gt)
+                loss = self.loss_func(output, gt)
 
                 predicted = torch.argmax(output.detach(), dim=1)
                 correct = gt.detach()
@@ -320,7 +332,7 @@ class UNetTrainer(MetricsHistory):
     def init_model(self):
         """Initialize model and other data for procedure"""
         
-        self.loss = CombinedLoss(bce_weight=0.5, dice_weight=0.5).to(self.device)
+        self.loss_func = CombinedLoss(bce_weight=0.5, dice_weight=0.5).to(self.device)
         
         mdl_input_size = self.configer.model_config.get('input_size')
         
@@ -339,6 +351,11 @@ class UNetTrainer(MetricsHistory):
             backbone_checkpoints_path = Path(   self.configer.general_config.get('checkpoints_dir')) / \
                                                 self.configer.model_config.get('backbone_model_dir') / \
                                                 self.configer.model_config.get('backbone_model_name')
+            backbone_optim_config = {
+                'solver_type': self.configer.model_config.get('backbone_solver_type'),
+                'weight_decay': self.configer.model_config.get('backbone_weight_decay'),
+                'base_lr': self.configer.model_config.get('backbone_base_lr')
+            }
 
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
@@ -348,6 +365,7 @@ class UNetTrainer(MetricsHistory):
                 backbone_layer0_channels = self.configer.model_config.get("feature_list")[0],
                 backbone_pretrained = pretrained_flag,
                 backbone_checkpoints_path = backbone_checkpoints_path,
+                backbone_model_config = backbone_optim_config,
                 device = self.device
                 )
         else:
@@ -360,20 +378,21 @@ class UNetTrainer(MetricsHistory):
             device = self.device
             )
         self.epoch = self.epoch_init
+
+        # Set optimizer.
         self.optimizer = update_optimizer(
             net = self.net,
             optim = self.configer.model_config.get('solver_type'),
             decay = self.configer.model_config.get('weight_decay'),
             lr = self.configer.model_config.get('base_lr')
             )
-
-        # Resuming training, restoring optimizer value.
         if optim_dict is not None:
             self.optimizer.load_state_dict(optim_dict)
-            print(f"Resuming training from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
+            print(f"Resuming training {self.configer.model_config.get('model_name')} from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
         else:
-            print(f"Starting training from scratch using {self.configer.model_config.get('solver_type')}.")
+            print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
         
+        # Set scheduler.
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
             mode='max',
@@ -416,7 +435,7 @@ class UNetTrainer(MetricsHistory):
                 ToTensorV2(),
             ])  
         else:
-            raise NotImplementedError(f"Dataset not supported: {self.configer.get('dataset', 'name')}")
+            raise NotImplementedError(f"Dataset not supported: {self.dataset}")
 
         # Setting Dataloaders.
         if self.dataset == "moon-segmentation-binary":
@@ -424,7 +443,7 @@ class UNetTrainer(MetricsHistory):
             mask_prefix = self.configer.dataset_config.get('mask_prefix')
             img_folder = img_prefix + '/'
             all_images = [img_no_ext.replace(img_prefix, '') for img_no_ext in
-                [img.replace('.png', '') for img in os.listdir(self.data_path / img_folder) if img.endswith('.png')]
+                [img.replace('.png', '') for img in sorted(os.listdir(self.data_path / img_folder)) if img.endswith('.png')]
             ]
             train_images, val_images = train_test_split(
                 all_images,
@@ -458,10 +477,9 @@ class UNetTrainer(MetricsHistory):
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
                 num_workers=self.configer.model_config.get("workers"),
-                worker_init_fn=worker_init_fn,
                 pin_memory=True)
         else:
-            raise NotImplementedError(f"Dataset not supported: {self.configer.model_config.get('dataset_name')}")
+            raise NotImplementedError(f"Dataset not supported: {self.dataset}")
         
         print(f"Train. size: {len(self.train_loader.dataset)}")
         print(f"Valid. size: {len(self.val_loader.dataset)}")
@@ -476,7 +494,7 @@ class UNetTrainer(MetricsHistory):
             outputs = self.net(inputs)
 
             self.optimizer.zero_grad()
-            loss = self.loss(outputs, masks)
+            loss = self.loss_func(outputs, masks)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
             self.optimizer.step()
@@ -500,7 +518,7 @@ class UNetTrainer(MetricsHistory):
                 
                 outputs = self.net(inputs)
                 
-                loss = self.loss(outputs, masks)
+                loss = self.loss_func(outputs, masks)
 
                 self.update_metrics(
                     split = "val",
