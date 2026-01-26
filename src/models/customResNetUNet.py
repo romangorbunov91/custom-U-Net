@@ -108,7 +108,7 @@ def customResNetUNet(
             layer0_channels = backbone_layer0_channels,
             num_classes = None,
             pretrained = backbone_pretrained,
-            checkpoints_file = Path(backbone_checkpoints_file),
+            checkpoints_file = None if backbone_checkpoints_file is None else Path(backbone_checkpoints_file),
             device = device,
             zero_init_residual = backbone_zero_init_residual
         )
