@@ -7,8 +7,8 @@ from datetime import datetime
 import argparse
 from typing import Dict, List, Any, Optional
 
-from train import ResNetTrainer, UNetTrainer
-from utils.configer import Configer
+from .train import ResNetTrainer, UNetTrainer
+from .utils.configer import Configer
 
 def set_seed(seed: int) -> None:
     random.seed(seed)
