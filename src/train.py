@@ -13,17 +13,17 @@ from albumentations.pytorch import ToTensorV2
 
 # Import Utils.
 from torch.utils.data import DataLoader
-from utils.metrics import AverageMeter, CombinedLoss, dice_coefficient, iou_score, pixel_accuracy
+from .utils.metrics import AverageMeter, CombinedLoss, dice_coefficient, iou_score, pixel_accuracy
 
 # Import Datasets.
-from datasets.TinyImageNetDataset import TinyImageNetDataset
-from datasets.MoonSegmentBinaryDataset import MoonSegmentationDataset
+from .datasets.TinyImageNetDataset import TinyImageNetDataset
+from .datasets.MoonSegmentBinaryDataset import MoonSegmentationDataset
 
 # Import Model.
-from models.model_utilizer import load_net, update_optimizer, ModelUtilizer
-from models.customResNet import customResNet
-from models.customUNet import customUNet
-from models.customResNetUNet import customResNetUNet
+from .models.model_utilizer import load_net, update_optimizer, ModelUtilizer
+from .models.customResNet import customResNet
+from .models.customUNet import customUNet
+from .models.customResNetUNet import customResNetUNet
 
 # Setting seeds.
 def worker_init_fn(worker_id):
@@ -33,16 +33,18 @@ mean_norm = [0.485, 0.456, 0.406]
 std_norm = [0.229, 0.224, 0.225]
 
 class MetricsHistory:
-    def initialize_metrics(self, metric_names):
+    def initialize_metrics(self, metric_names, phases):
         """Call this in __init__ of your main class."""
+        
+        phase_keys = [phase.lower() for phase in phases]
         self.metrics = {
-            name: {'train': AverageMeter(), 'val': AverageMeter()}
+            name: {phase: AverageMeter() for phase in phase_keys}
             for name in metric_names
         }
 
         history_keys = [
             f"{split}_{name}"
-            for split in ['train', 'val']
+            for split in phase_keys
             for name in list(self.metrics.keys())
             ]
         
@@ -50,20 +52,35 @@ class MetricsHistory:
         self.train_history["epoch"] = []
         self.train_history["lr"] = []
     
-    def print_metrics(self):
-        prefix = f"Epoch {self.train_history['epoch'][-1]:2d} | "
-        train_str = ", ".join(f"{name}: {self.train_history[f'train_{name}'][-1]:.4f}" 
-                            for name in list(self.metrics.keys()))
-        val_str = ", ".join(f"{name}: {self.train_history[f'val_{name}'][-1]:.4f}" 
-                            for name in list(self.metrics.keys()))
-        print(f"{prefix}Train. {train_str}")
-        print(f"{' ' * len(prefix)}Valid. {val_str}")
+    def print_metrics(self, phases):
+        phase_keys = [phase.lower() for phase in phases]
+        
+        if len(self.train_history['epoch']) > 0:
+            prefix = f"Epoch {self.train_history['epoch'][-1]:2d} | "
+        else:
+            prefix = ''
+        
+        if 'train' in phase_keys:
+            train_str = ", ".join(f"{name}: {self.train_history[f'train_{name}'][-1]:.4f}" 
+                                for name in list(self.metrics.keys()))
+            print(f"{prefix}Train. {train_str}")
+        
+        if 'val' in phase_keys:
+            val_str = ", ".join(f"{name}: {self.train_history[f'val_{name}'][-1]:.4f}" 
+                                for name in list(self.metrics.keys()))
+            print(f"{' ' * len(prefix)}Valid. {val_str}")
     
-    def log_epoch_history(self):
-        self.train_history["epoch"].append(self.epoch + 1)
-        self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
+    def log_epoch_history(self, phases):
+        
+        if len(self.train_history['epoch']) > 0:
+            self.train_history["epoch"].append(self.epoch + 1)
+        
+        if len(self.train_history['lr']) > 0:
+            self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
+        
+        phase_keys = [phase.lower() for phase in phases]
         for name in self.metrics:
-            for split in ['train', 'val']:
+            for split in phase_keys:
                 key = f"{split}_{name}"
                 self.train_history[key].append(self.metrics[name][split].avg)
 
@@ -118,7 +135,10 @@ class ResNetTrainer(MetricsHistory):
         self.selected_classes = self.configer.dataset_config.get("selected_classes")
         self.n_classes = len(self.selected_classes)
         
-        self.initialize_metrics(['loss', 'accuracy'])
+        self.initialize_metrics(
+            ['loss', 'accuracy'],
+            ['train', 'val']
+            )
         
     def init_model(self):
         """Initialize model and other data for procedure"""
@@ -278,8 +298,8 @@ class ResNetTrainer(MetricsHistory):
             self.__train()
             ret = self.__val()
             
-            self.log_epoch_history()
-            self.print_metrics()          
+            self.log_epoch_history(['train', 'val'])
+            self.print_metrics(['train', 'val'])          
             self.reset_metrics()
 
             if ret < 0:
@@ -327,7 +347,10 @@ class UNetTrainer(MetricsHistory):
         self.selected_classes = None
         self.n_classes = None
         
-        self.initialize_metrics(['loss', 'dice', 'iou', 'accuracy'])
+        self.initialize_metrics(
+            ['loss', 'dice', 'iou', 'accuracy'],
+            ['train', 'val']
+            )
         
     def init_model(self):
         """Initialize model and other data for procedure"""
@@ -542,8 +565,8 @@ class UNetTrainer(MetricsHistory):
             if self.scheduler is not None:
                 self.scheduler.step(self.metrics[self.configer.model_config.get("checkpoints_metric")]['val'].avg)
 
-            self.log_epoch_history()
-            self.print_metrics()
+            self.log_epoch_history(['train', 'val'])
+            self.print_metrics(['train', 'val'])
             self.reset_metrics()
 
             if ret < 0:
