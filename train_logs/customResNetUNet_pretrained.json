@@ -15,6 +15,7 @@
                 72,
                 144
             ],
+            "backbone_model_name": "best_customResNet.pth",
             "backbone_layers_num": 4,
             "backbone_block_size": 2
         },
