@@ -72,10 +72,10 @@ class MetricsHistory:
     
     def log_epoch_history(self, phases):
         
-        if len(self.train_history['epoch']) > 0:
+        if self.epoch is not None:
             self.train_history["epoch"].append(self.epoch + 1)
         
-        if len(self.train_history['lr']) > 0:
+        if self.optimizer is not None:
             self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
         
         phase_keys = [phase.lower() for phase in phases]
