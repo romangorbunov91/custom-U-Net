@@ -33,6 +33,7 @@ def build_output_dict(
         "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "model": {
             "name": configer.model_config.get("model_name"),
+            "input_size": configer.model_config.get("input_size"),
             "param_count": model_param_count,
         },
         "dataset": {
@@ -49,17 +50,26 @@ def build_output_dict(
     }
 
     # Add model-specific details.
-    if configer.model_config.get("model_name") == "customResNet":
-        metadata["model"].update({
+    if metadata['model']['name'] == "customResNet":
+        metadata['model'].update({
             "layers_num": configer.model_config.get("layers_num"),
             "block_size": configer.model_config.get("block_size"),
             "class_size": len(configer.dataset_config.get("selected_classes")),
             "selected_classes": configer.dataset_config.get("selected_classes")
         })
-    elif configer.model_config.get("model_name") == "customUNet":
-        metadata["model"]["feature_list"] = configer.model_config.get("feature_list")
-        if backbone_info:
-            metadata["backbone_model"] = backbone_info
+    
+    elif metadata['model']['name'] == "customUNet":
+        metadata['model']['feature_list'] = configer.model_config.get("feature_list")
+    
+    elif metadata['model']['name'] == "customResNetUNet":
+        metadata['model']['feature_list'] = configer.model_config.get("feature_list")
+
+        metadata['model'].update({
+            "backbone_layers_num": configer.model_config.get("backbone_layers_num"),
+            "backbone_block_size": configer.model_config.get("backbone_block_size")
+        })
+    else:
+        raise NotImplementedError(f"Model not supported: {metadata['model']['name']}")
 
     # Build train_log dynamically.
     train_log = []
@@ -131,16 +141,30 @@ if __name__ == "__main__":
     
     if configer.model_config.get('model_name') == "customResNet":
         configer.output_file_name = (
+            f"{str(configer.model_config.get('model_name'))}"
+        )
+        '''
+        configer.output_file_name = (
             f"{str(configer.model_config.get('model_name'))}_"
             f"{str(configer.model_config.get('layers_num'))}x"
             f"{str(configer.model_config.get('block_size'))}_"
             f"classes_{str(len(configer.dataset_config.get('selected_classes')))}"
         )
+        '''
     elif configer.model_config.get('model_name') == "customUNet":
         configer.output_file_name = (
             f"{str(configer.model_config.get('model_name'))}"
         )
     elif configer.model_config.get('model_name') == "customResNetUNet":
+        if configer.model_config.get('backbone_tune_epochs') < configer.model_config.get('epochs'):
+            configer.output_file_name = (
+                f"{str(configer.model_config.get('model_name'))}_pretrained"
+            )
+        else:
+            configer.output_file_name = (
+                f"{str(configer.model_config.get('model_name'))}"
+            )
+        '''
         backbone_name = str(configer.model_config.get('backbone_model_name'))
         backbone_name_no_ext = Path(backbone_name).stem
         configer.output_file_name = (
@@ -148,6 +172,7 @@ if __name__ == "__main__":
             f"backbone_{backbone_name_no_ext}_"
             f"finetune_last_{str(configer.model_config.get('backbone_tune_epochs'))}_epochs"
             )
+        '''
     else:
         raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
 
@@ -170,7 +195,7 @@ if __name__ == "__main__":
         train_history = train_history,
         train_size = train_size,
         val_size = val_size,
-        model_param_count = model_param_count,
-        backbone_info = None)
+        model_param_count = model_param_count)
+    
     with open(logs_dir / (configer.output_file_name + '.json'), "w") as f:
         json.dump(output_dict, f, indent=4)
