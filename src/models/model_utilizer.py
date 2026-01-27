@@ -112,7 +112,7 @@ class ModelUtilizer(object):
             'scheduler_state_dict': scheduler.state_dict() if scheduler else None,
         }
         
-        checkpoints_dir = Path(self.configer.general_config.get('checkpoints_dir')) / self.configer.get("model_name")
+        checkpoints_dir = Path(self.configer.general_config.get('checkpoints_dir'))
         checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
         if self.save_policy == "all":
