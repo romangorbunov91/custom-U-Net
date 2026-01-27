@@ -65,6 +65,7 @@ def build_output_dict(
         metadata['model']['feature_list'] = configer.model_config.get("feature_list")
 
         metadata['model'].update({
+            "backbone_model_name": configer.model_config.get("backbone_model_name"),
             "backbone_layers_num": configer.model_config.get("backbone_layers_num"),
             "backbone_block_size": configer.model_config.get("backbone_block_size")
         })
