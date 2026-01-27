@@ -371,8 +371,7 @@ class UNetTrainer(MetricsHistory):
             else:
                 pretrained_flag = False
             
-            backbone_checkpoints_file = Path(   self.configer.general_config.get('checkpoints_dir')) / \
-                                                self.configer.model_config.get('backbone_model_dir') / \
+            backbone_checkpoints_file = Path(   self.configer.general_config.get('backbone_model_dir')) / \
                                                 self.configer.model_config.get('backbone_model_name')
 
             self.net = customResNetUNet(
