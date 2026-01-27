@@ -83,7 +83,7 @@ self.val_transforms = transforms.Compose([
 
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
-python src\main.py --hypes src\hyperparameters\customResNet-config.json
+python -m src.main --hypes src\hyperparameters\customResNet-config.json
 ```
 ```
 python -m src.main --hypes src\hyperparameters\customUNet-config.json
@@ -93,17 +93,17 @@ python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json
 ```
 или
 ```
-python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_customResNet_4x2_classes_10.pth
+python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\best_customResNet.pth
 ```
 ```
-python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_customUNet.pth
+python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\best_customUNet.pth
 ```
 Логи обучения хранятся в [train_logs](train_logs).
 
 Графики построены в [main_notebook.ipynb](main_notebook.ipynb).
 
 <p align="center" width="100%">
-  <img src="./readme_img/loss_acc_4x2_ReLU_Adam.png"
+  <img src="./readme_img/backbone.png"
   style="background-color: white; padding: 0;
   width="100%" />
 </p>
