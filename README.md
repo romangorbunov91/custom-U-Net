@@ -86,17 +86,17 @@ self.val_transforms = transforms.Compose([
 python src\main.py --hypes src\hyperparameters\customResNet-config.json
 ```
 ```
-python src\main.py --hypes src\hyperparameters\customUNet-config.json
+python -m src.main --hypes src\hyperparameters\customUNet-config.json
 ```
 ```
-python src\main.py --hypes src\hyperparameters\customResNetUNet-config.json
+python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json
 ```
 или
 ```
-python src\main.py --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_customResNet_4x2_classes_10.pth
+python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\customResNet\best_customResNet_4x2_classes_10.pth
 ```
 ```
-python src\main.py --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_customUNet.pth
+python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\customUNet\best_customUNet.pth
 ```
 Логи обучения хранятся в [train_logs](train_logs).
 
