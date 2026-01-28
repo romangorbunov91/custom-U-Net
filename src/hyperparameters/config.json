@@ -1,8 +1,8 @@
 {
   "data_dir": "./datasets/",
   "checkpoints_dir": "./checkpoints/",
-  "logs_dir": "./train_logs/",
   "backbone_model_dir": "./checkpoints/backbones/",
+  "logs_dir": "./train_logs/",
   "device": "cuda",
   "seed": 1991
 }

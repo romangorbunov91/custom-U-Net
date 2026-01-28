@@ -17,15 +17,22 @@
 
 ## Часть 1. Классификатор 128×128
 
-В основу классификатора положена архитектура из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18).
+В основу классификатора положена .
 
-Доработанная версия [customResNet](src/models/customResNet.py) в конфигурации:
+В этом проекте использована доработанная версия архитектуры классификатора из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18). В [customResNet.py](src/models/customResNet.py) реализована функция с возможностью инициализации архитектуры модели под следующие входные параметры:
+- `layers_config: List[int]` - слои модели в формате списка; например, `[2, 2, 2, 2]`;
+- `in_channels: int` - количество входных каналов; например, для RGB-картинок `in_channels=3`;
+- `layer0_channels: int` - количество каналов на входе первого базового слоя; например, `layer0_channels=18`.
+- `num_classes: int` - количество классов на выходе; например, `num_classes=10`;
+- `pretrained: bool` - флаг загрузки весов предобученной модели;
+- `checkpoints_file: Union[str, Path]` - путь к `*.pth`-файлу весов предобученной модели.
+
+Классификатор настроен на следующие параметры:
 - слои модели: `layers_config=[2, 2, 2, 2]` (`"layers_num": 4`, `"block_size": 2`);
 - функция активации: `activation=ReLU`;
 - количество каналов на входе первого базового слоя: `layer0_channels=18`;
 - каналы: `[18, 36, 72, 144]`;
 - количество параметров модели: **889 732**.
-имеет флаг `pretrained: bool` для загрузки весов из `checkpoints_file: Union[str, Path]`, при необходимости.
 
 Количество каналов `[18, 36, 72, 144]` соответствует декодеру в создаваемой U-Net.
 
@@ -56,31 +63,15 @@ self.val_transforms = transforms.Compose([
 ```
 где `mdl_img_size = [3, 128, 128]` (изображения приводятся из 64x64 к размеру 128×128).
 
-### Скрипт обучения
-
-В [???.py](src/models/???.py) реализован `class customResNet` с возможностью инициализации архитектуры модели под следующие входные параметры:
-- `num_classes` - количество классов на выходе; например, `num_classes=10`;
-- `layers_config` - слои модели в формате списка; например, `[2, 2, 2, 2]` - `"layers_num": 4`, `"block_size": 2`;
-- `activation` - функция активации (`ReLU`, `LeakyReLU`, `ELU`, или `GELU`);
-- `in_channels` - количество входных каналов; например, для RGB-картинок `in_channels=3`;
-- `layer0_channels` - количество каналов на входе первого базового слоя.
-
-#### Конфигурирование проекта
-Гиперпараметры задаются в файле [???.json](src/hyperparameters/???.json), включая:
-- количество эпох в конце обучения, на которых включается дообучение backbone: `backbone_tune_epoch`;
-- архитектура модели: `layers_num`, `block_size`, `activation`;
-- выбранные классы датасета: `selected_classes`;
-- параметры обучения: `epochs`, `batch_size`, `solver`;
-- политика обучения: `save_policy` - "all", "best" (политика "early_stop" выбирается установкой параметра "early_stop_number" > 0).
-
 #### Обучение
 Обучение реализовано в [train.py](src/train.py) в виде класса `ResNetTrainer` со следующими методами:
-- `__init__` - инициализация переменных класса в соответствии с гиперпараметрами из файла конфигурации проекта;
+- `__init__` - инициализация переменных класса в соответствии с гиперпараметрами из файла конфигурации модели;
 - `init_model` - установка функции ошибки, инициализация/загрузка модели, загрузка датасета;
 - `__train` - обучение по батчам;
 - `__val` - валидация по батчам;
-- `train` - основной цикл обучения/валидации по эпохам;
-- `update_metrics` - аккумулирование losses/accuracy посредством [average_meter.py](src/utils/average_meter.py).
+- `train` - основной цикл обучения/валидации по эпохам.
+
+Работа с метриками и логами выстроена через класс `MetricsHistory` на основе `AverageMeter` из [metrics.py](src/utils/metrics.py).
 
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
@@ -110,6 +101,8 @@ python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume
 
 Размер каналов подстроен под требование ~2.5M±10% параметров.
 
+Обучение реализовано в [train.py](src/train.py) в виде класса `UNetTrainer`.
+
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
 python -m src.main --hypes src\hyperparameters\customUNet-config.json
@@ -121,8 +114,13 @@ python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume c
 
 ## Часть 3. U-Net с бэкбоном из классификатора
 
-[customResNetUNet](src/models/customResNetUNet.py)
+[customResNetUNet](src/models/customResNetUNet.py) в конфигурации:
+- каналы: `[18, 36, 72, 144]`;
+- функция активации: `activation=ReLU`;
+- backbone: `customResNet`;
 - количество параметров модели: **2 963 395**.
+
+Обучение реализовано в [train.py](src/train.py) в виде класса `UNetTrainer`.
 
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 
@@ -142,7 +140,6 @@ python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json --re
 | **U-Net + backbone** | customResNetUNet | 3.0M      | нет       | 45              | 47.5%         | 54.6%         | 37.6%        | 90.0%             |
 | **U-Net + backbone** | customResNetUNet | 3.0M      | да        | 49              | 38.5%         | 56.9%         | 39.8%        | 91.3%             |
 
-
 <p align="center" width="100%">
   <img src="./readme_img/UNet.png"
   style="background-color: white; padding: 0;
@@ -151,7 +148,7 @@ python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json --re
 
 # Выводы
 - Потребовалось уменьшить до 144 каналов.
-- Лучшие метрики показывает ...
+- Лучшие метрики показывает ... Возможно, по причине малого количества классов.
 - Претрейн быстрее обучается.
 
 ## Reference
@@ -195,3 +192,13 @@ python -m venv .venv
 ```
 pip install -r requirements.txt
 ```
+
+### Конфигурирование проекта
+
+Общие гиперпараметры задаются в файле [config.json](src/hyperparameters/config.json), включая:
+- `data_dir: str` - каталог с датасетами;
+- `checkpoints_dir: str` - каталог с файлами весов моделей;
+- `backbone_model_dir: str` - каталог с файлами весов backbone-моделей;
+- `logs_dir: str` - каталог с логами моделей;,
+- `device` - `cuda`, `cpu`;
+- `seed: int`.
