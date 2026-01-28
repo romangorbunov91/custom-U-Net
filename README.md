@@ -17,14 +17,15 @@
 
 ## Часть 1. Классификатор 128×128
 
-В основу классификатора положена архитектура из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18) в конфигурации:
+В основу классификатора положена архитектура из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18).
+
+Доработанная версия [customResNet](src/models/customResNet.py) в конфигурации:
 - слои модели: `layers_config=[2, 2, 2, 2]` (`"layers_num": 4`, `"block_size": 2`);
 - функция активации: `activation=ReLU`;
 - количество каналов на входе первого базового слоя: `layer0_channels=18`;
 - каналы: `[18, 36, 72, 144]`;
 - количество параметров модели: **889 732**.
-
-Доработанная версия [customResNet](src/models/customResNet.py) имеет флаг `pretrained: bool` для загрузки весов из `checkpoints_file: Union[str, Path]`, при необходимости.
+имеет флаг `pretrained: bool` для загрузки весов из `checkpoints_file: Union[str, Path]`, при необходимости.
 
 Количество каналов `[18, 36, 72, 144]` соответствует декодеру в создаваемой U-Net.
 
@@ -134,6 +135,13 @@ python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json --re
 ```
 
 ## Сравнение моделей сегментации
+
+| Архитектура          | Модель           | Параметры | Предобуч. | Best Epoch (BE) | Val Loss @ BE | Val Dice @ BE | Val IoU @ BE | Val Accuracy @ BE |
+|----------------------|------------------|-----------|-----------|-----------------|---------------|---------------|--------------|-------------------|
+| **U-Net**            | customUNet       | 2.5M      | нет       | 47              | 36.3%         | 60.4%         | 43.3%        | 91.8%             |
+| **U-Net + backbone** | customResNetUNet | 3.0M      | нет       | 45              | 47.5%         | 54.6%         | 37.6%        | 90.0%             |
+| **U-Net + backbone** | customResNetUNet | 3.0M      | да        | 49              | 38.5%         | 56.9%         | 39.8%        | 91.3%             |
+
 
 <p align="center" width="100%">
   <img src="./readme_img/UNet.png"
