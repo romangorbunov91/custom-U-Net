@@ -73,6 +73,8 @@ self.val_transforms = transforms.Compose([
 
 Работа с метриками и логами выстроена через класс `MetricsHistory` на основе `AverageMeter` из [metrics.py](src/utils/metrics.py).
 
+Гиперпараметры задаются в файле [customResNet-config.json](src/hyperparameters/customResNet-config.json).
+
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
 python -m src.main --hypes src\hyperparameters\customResNet-config.json
@@ -103,6 +105,8 @@ python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume
 
 Обучение реализовано в [train.py](src/train.py) в виде класса `UNetTrainer`.
 
+Гиперпараметры задаются в файле [customUNet-config.json](src/hyperparameters/customUNet-config.json).
+
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 ```
 python -m src.main --hypes src\hyperparameters\customUNet-config.json
@@ -121,6 +125,8 @@ python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume c
 - количество параметров модели: **2 963 395**.
 
 Обучение реализовано в [train.py](src/train.py) в виде класса `UNetTrainer`.
+
+Гиперпараметры задаются в файле [customResNetUNet-config.json](src/hyperparameters/customResNetUNet-config.json).
 
 Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
 
@@ -147,9 +153,9 @@ python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json --re
 </p>
 
 # Выводы
-- Потребовалось уменьшить до 144 каналов.
-- Лучшие метрики показывает ... Возможно, по причине малого количества классов.
-- Претрейн быстрее обучается.
+- Исходя из ограничения в ~2.5M±10% параметров количество каналов на выходе энкодера потребовалось уменьшить до 144. Следовательно, backbone-классификатор построен в конфигурации `[18, 36, 72, 144]`.
+- Лучшие метрики на валидации продемонстрировала архитектура U-Net без бэкбона. 
+- Предобученная архитектура с бэкбоном продемонстрировала лучшую динамику обучения, по сравнению с непредобученной.
 
 ## Reference
 - [Полный текст задания](https://github.com/physicorym/designing_neural_network_architectures_2025_01/tree/main/seminar_03)
