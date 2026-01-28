@@ -1,5 +1,8 @@
 # Классификация 128x128 + U-Net c бэкбоном
 
+Логи обучения хранятся в [train_logs](train_logs).
+
+Графики построены в [main_notebook.ipynb](main_notebook.ipynb).
 
 ## Датасеты
 
@@ -22,7 +25,7 @@
 В этом проекте использована доработанная версия архитектуры классификатора из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18). В [customResNet.py](src/models/customResNet.py) реализована функция с возможностью инициализации архитектуры модели под следующие входные параметры:
 - `layers_config: List[int]` - слои модели в формате списка; например, `[2, 2, 2, 2]`;
 - `in_channels: int` - количество входных каналов; например, для RGB-картинок `in_channels=3`;
-- `layer0_channels: int` - количество каналов на входе первого базового слоя; например, `layer0_channels=18`.
+- `layer0_channels: int` - количество каналов на входе первого базового слоя; например, `layer0_channels=18`;
 - `num_classes: int` - количество классов на выходе; например, `num_classes=10`;
 - `pretrained: bool` - флаг загрузки весов предобученной модели;
 - `checkpoints_file: Union[str, Path]` - путь к `*.pth`-файлу весов предобученной модели.
@@ -63,7 +66,6 @@ self.val_transforms = transforms.Compose([
 ```
 где `mdl_img_size = [3, 128, 128]` (изображения приводятся из 64x64 к размеру 128×128).
 
-#### Обучение
 Обучение реализовано в [train.py](src/train.py) в виде класса `ResNetTrainer` со следующими методами:
 - `__init__` - инициализация переменных класса в соответствии с гиперпараметрами из файла конфигурации модели;
 - `init_model` - установка функции ошибки, инициализация/загрузка модели, загрузка датасета;
@@ -83,10 +85,6 @@ python -m src.main --hypes src\hyperparameters\customResNet-config.json
 ```
 python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\backbones\best_customResNet.pth
 ```
-
-Логи обучения хранятся в [train_logs](train_logs).
-
-Графики построены в [main_notebook.ipynb](main_notebook.ipynb).
 
 <p align="center" width="100%">
   <img src="./readme_img/backbone.png"
