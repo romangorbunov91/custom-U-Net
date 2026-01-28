@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from pathlib import Path
-from .model_utilizer import load_net, update_optimizer
+from .model_utilizer import load_net
 from typing import Union, List, Dict, Tuple, Optional
 
 class BasicBlock(nn.Module):

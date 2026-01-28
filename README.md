@@ -15,7 +15,6 @@
 - `__len__`: возврат количества примеров в датасете;
 - `__getitem__`: загрузка и возврат одного примера (изображение + маска).
 
-
 ## Часть 1. Классификатор 128×128
 
 В основу классификатора положена архитектура из проекта [ResNet18](https://github.com/romangorbunov91/ResNet18) в конфигурации:
@@ -25,16 +24,17 @@
 - каналы: `[18, 36, 72, 144]`;
 - количество параметров модели: **889 732**.
 
+Доработанная версия [customResNet](src/models/customResNet.py) имеет флаг `pretrained: bool` для загрузки весов из `checkpoints_file: Union[str, Path]`, при необходимости.
+
+Количество каналов `[18, 36, 72, 144]` соответствует декодеру в создаваемой U-Net.
+
 Модель обучена на `Tiny ImageNet-200`, количество классов: `num_classes=10`.
-Архитектура модифицирована таким образом, чтобы
-pretrained = True/False
-num_classes = None
 
-
-
-Аугментации:
-
-
+Train-аугментации:
+- `Resize --> RandomResizedCrop`;
+- `RandomHorizontalFlip`;
+- `RandomRotation`;
+- `ColorJitter`.
 
 ```
 self.train_transforms = transforms.Compose([
@@ -55,7 +55,7 @@ self.val_transforms = transforms.Compose([
 ```
 где `mdl_img_size = [3, 128, 128]` (изображения приводятся из 64x64 к размеру 128×128).
 
-### 2.4. Скрипт обучения
+### Скрипт обучения
 
 В [???.py](src/models/???.py) реализован `class customResNet` с возможностью инициализации архитектуры модели под следующие входные параметры:
 - `num_classes` - количество классов на выходе; например, `num_classes=10`;
@@ -85,19 +85,11 @@ self.val_transforms = transforms.Compose([
 ```
 python -m src.main --hypes src\hyperparameters\customResNet-config.json
 ```
-```
-python -m src.main --hypes src\hyperparameters\customUNet-config.json
-```
-```
-python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json
-```
 или
 ```
-python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\best_customResNet.pth
+python -m src.main --hypes src\hyperparameters\customResNet-config.json --resume checkpoints\backbones\best_customResNet.pth
 ```
-```
-python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\best_customUNet.pth
-```
+
 Логи обучения хранятся в [train_logs](train_logs).
 
 Графики построены в [main_notebook.ipynb](main_notebook.ipynb).
@@ -109,16 +101,37 @@ python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume c
 </p>
 
 ## Часть 2. Базовая U-Net на "Луне"
-В основу положена архитектура [UNet](https://github.com/romangorbunov91/ResNet18) в конфигурации:
+
+[customUNet](src/models/customUNet.py) в конфигурации:
 - каналы: `[18, 36, 72, 144]`;
 - функция активации: `activation=ReLU`;
 - количество параметров модели: **2 459 719**.
 
+Размер каналов подстроен под требование ~2.5M±10% параметров.
+
+Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
+```
+python -m src.main --hypes src\hyperparameters\customUNet-config.json
+```
+или
+```
+python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume checkpoints\best_customUNet.pth
+```
 
 ## Часть 3. U-Net с бэкбоном из классификатора
 
+[customResNetUNet](src/models/customResNetUNet.py)
 - количество параметров модели: **2 963 395**.
 
+Рекомендуется работать с моделью из терминала посредством [main.py](src/main.py).
+
+```
+python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json
+```
+или
+```
+python -m src.main --hypes src\hyperparameters\customResNetUNet-config.json --resume checkpoints\best_customResNetUNet.pth
+```
 
 ## Сравнение моделей сегментации
 
