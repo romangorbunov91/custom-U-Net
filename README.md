@@ -119,14 +119,43 @@ python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume c
 
 - количество параметров модели: **2 963 395**.
 
+
+## Сравнение моделей сегментации
+
+<p align="center" width="100%">
+  <img src="./readme_img/UNet.png"
+  style="background-color: white; padding: 0;
+  width="100%" />
+</p>
+
 # Выводы
-- В сравнении 
+- Потребовалось уменьшить до 144 каналов.
+- Лучшие метрики показывает ...
+- Претрейн быстрее обучается.
 
 ## Reference
 - [Полный текст задания](https://github.com/physicorym/designing_neural_network_architectures_2025_01/tree/main/seminar_03)
 
 ## Приложения
+### Визуализации масок
 
+<p align="center" width="100%">
+  <img src="./readme_img/samples_customUNet.png"
+  style="background-color: white; padding: 0;
+  width="100%" />
+</p>
+
+<p align="center" width="100%">
+  <img src="./readme_img/samples_customResNetUNet.png"
+  style="background-color: white; padding: 0;
+  width="100%" />
+</p>
+
+<p align="center" width="100%">
+  <img src="./readme_img/samples_customResNetUNet_pretrained.png"
+  style="background-color: white; padding: 0;
+  width="100%" />
+</p>
 
 ### Работа с проектом
 #### 1. Скачайте файлы репозитория
