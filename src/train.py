@@ -332,10 +332,11 @@ class UNetTrainer(MetricsHistory):
         print(f"Device (train.py): {self.device}")
         self.model_utility = ModelUtilizer(self.configer) #: Model utility for load, save and update optimizer
         self.net = None
-        self.lr = None
 
         # Training procedure.
         self.epoch = None
+        self.epoch_init = None
+        self.backbone_start_epoch = None
         self.optimizer = None
         self.scheduler = None
         self.loss = None
@@ -359,20 +360,18 @@ class UNetTrainer(MetricsHistory):
         
         mdl_input_size = self.configer.model_config.get('input_size')
         
-        if self.configer.model_config.get('model_name') == "customUNet":
+        if self.configer.model_config['model_name'] == "customUNet":
             self.net = customUNet(
                 in_channels = mdl_input_size[0],
                 out_channels = 1,
                 features = self.configer.model_config.get("feature_list")
                 )
-        elif self.configer.model_config.get('model_name') == "customResNetUNet":
-            if self.configer.model_config.get('backbone_tune_epochs') < self.configer.model_config.get('epochs'):
-                pretrained_flag = True
-            else:
-                pretrained_flag = False
+        elif self.configer.model_config['model_name'] == "customResNetUNet":
             
-            backbone_checkpoints_file = Path(   self.configer.general_config.get('backbone_model_dir')) / \
-                                                self.configer.model_config.get('backbone_model_name')
+            pretrained_flag = bool(self.configer.model_config['backbone_pretrained'])
+            
+            backbone_checkpoints_file = Path(   self.configer.general_config['backbone_model_dir']) / \
+                                                self.configer.model_config['backbone_model_name']
 
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
@@ -394,7 +393,7 @@ class UNetTrainer(MetricsHistory):
             device = self.device
             )
         self.epoch = self.epoch_init
-
+        self.backbone_start_epoch = self.configer.model_config['epochs'] - self.configer.model_config['backbone_tune_epochs']
         # Set optimizer.
         self.optimizer = update_optimizer(
             net = self.net,
@@ -503,6 +502,7 @@ class UNetTrainer(MetricsHistory):
     def __train(self):
         """Train function for every epoch."""
         self.net.train()
+        
         for data_tuple in tqdm(self.train_loader, desc="Train"):
 
             inputs, masks = data_tuple[0].to(self.device), data_tuple[1].to(self.device)
@@ -555,9 +555,17 @@ class UNetTrainer(MetricsHistory):
             return -1
         return ret
 
-    def train(self):        
-        for n in range(self.configer.get("epochs")):
-            print("Starting epoch {} of {}.".format(self.epoch + 1, self.configer.get("epochs") + self.epoch_init))
+    def train(self):
+        
+        self.net.freeze_encoder()
+        
+        for n in range(self.configer['epochs']):
+            print("Starting epoch {} of {}.".format(self.epoch + 1, self.configer['epochs'] + self.epoch_init))
+            
+            if n == self.epoch_init + self.backbone_start_epoch:
+                self.net.unfreeze_encoder()
+                print(f"Backbone encoder training started (finetune next {self.configer.model_config['backbone_tune_epochs']} epochs).")
+            
             self.__train()
             ret = self.__val()
             

@@ -22,7 +22,19 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 class _customResNetUNet(nn.Module):
+    
+    def freeze_encoder(self):
+        """Freeze all encoder (backbone) parameters."""
+        for block in self.encoder_blocks:
+            for param in block.parameters():
+                param.requires_grad = False
 
+    def unfreeze_encoder(self):
+        """Unfreeze all encoder (backbone) parameters."""
+        for block in self.encoder_blocks:
+            for param in block.parameters():
+                param.requires_grad = True
+    
     def __init__(self,
                 out_channels: int,
                 features: List[int],

@@ -157,14 +157,12 @@ if __name__ == "__main__":
             f"{str(configer.model_config.get('model_name'))}"
         )
     elif configer.model_config.get('model_name') == "customResNetUNet":
-        if configer.model_config.get('backbone_tune_epochs') < configer.model_config.get('epochs'):
-            configer.output_file_name = (
-                f"{str(configer.model_config.get('model_name'))}_pretrained"
-            )
-        else:
-            configer.output_file_name = (
-                f"{str(configer.model_config.get('model_name'))}"
-            )
+        
+        configer.output_file_name = str(configer.model_config['model_name'])
+        
+        if bool(configer.model_config['backbone_pretrained']):
+            configer.output_file_name += "_pretrained"
+
         '''
         backbone_name = str(configer.model_config.get('backbone_model_name'))
         backbone_name_no_ext = Path(backbone_name).stem
