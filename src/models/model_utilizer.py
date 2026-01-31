@@ -15,23 +15,26 @@ def load_net(
         optim_dict = None
         sched_dict = None
     else:
-        print('Restoring checkpoint: ', checkpoints_file)
-        checkpoint_dict = torch.load(checkpoints_file, map_location=device)
-        # Remove "module." from DataParallel, if present.
-        checkpoint_dict['state_dict'] = {k[len('module.'):] if k.startswith('module.') else k: v for k, v in
-                                            checkpoint_dict['state_dict'].items()}
-        try:
-            load_result = net.load_state_dict(checkpoint_dict['state_dict'], strict=False)
-            if load_result.missing_keys:
-                print(f"Missing keys: {load_result.missing_keys}")
-            if load_result.unexpected_keys:
-                print(f"Unexpected keys: {load_result.unexpected_keys}")
-        except RuntimeError as e:
-            print(f"State dict loading issues:\n{e}")
+        if checkpoints_file.is_file():
+            print('Restoring checkpoint: ', checkpoints_file)
+            checkpoint_dict = torch.load(checkpoints_file, map_location=device)
+            # Remove "module." from DataParallel, if present.
+            checkpoint_dict['state_dict'] = {k[len('module.'):] if k.startswith('module.') else k: v for k, v in
+                                                checkpoint_dict['state_dict'].items()}
+            try:
+                load_result = net.load_state_dict(checkpoint_dict['state_dict'], strict=False)
+                if load_result.missing_keys:
+                    print(f"Missing keys: {load_result.missing_keys}")
+                if load_result.unexpected_keys:
+                    print(f"Unexpected keys: {load_result.unexpected_keys}")
+            except RuntimeError as e:
+                print(f"State dict loading issues:\n{e}")
 
-        epoch = checkpoint_dict.get('epoch', 0)
-        optim_dict = checkpoint_dict.get('optimizer', None)
-        sched_dict = checkpoint_dict.get('scheduler_state_dict', None)
+            epoch = checkpoint_dict.get('epoch', 0)
+            optim_dict = checkpoint_dict.get('optimizer', None)
+            sched_dict = checkpoint_dict.get('scheduler_state_dict', None)
+        else:
+            raise FileNotFoundError(f"Checkpoints file '{checkpoints_file}' has not been found.")
         
     net = net.to(device)
     if device.type == 'cuda' and torch.cuda.device_count() > 1:
