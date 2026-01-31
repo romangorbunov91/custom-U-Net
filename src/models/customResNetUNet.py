@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pathlib import Path
 from typing import Union, List, Dict, Tuple, Optional
+from typing_extensions import Self
 from .customResNet import customResNet
 
 class DoubleConv(nn.Module):
@@ -28,13 +29,33 @@ class _customResNetUNet(nn.Module):
         for block in self.encoder_blocks:
             for param in block.parameters():
                 param.requires_grad = False
-
+        self.encoder_frozen = True
+        
     def unfreeze_encoder(self):
         """Unfreeze all encoder (backbone) parameters."""
         for block in self.encoder_blocks:
             for param in block.parameters():
                 param.requires_grad = True
+        self.encoder_frozen = False
     
+    def train(self, mode: bool = True) -> Self:
+        """
+        Sets the module in training mode.
+        Overrides default behavior to keep frozen encoder in eval mode.
+        """
+        # Сначала вызываем стандартное поведение для всей модели.
+        super().train(mode)
+
+        if self.encoder_frozen:
+            for block in self.encoder_blocks:
+                block.eval()
+                # Рекурсивно убеждаемся, что все BatchNorm (и Dropout) переведены в eval.
+                for m in block.modules():
+                    if isinstance(m, (nn.BatchNorm2d, nn.Dropout)):
+                        m.eval()
+        
+        return self
+        
     def __init__(self,
                 out_channels: int,
                 features: List[int],
@@ -42,6 +63,8 @@ class _customResNetUNet(nn.Module):
                 ):
         super(_customResNetUNet, self).__init__()
 
+        self.encoder_frozen = False
+        
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
         

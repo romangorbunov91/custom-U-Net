@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import List, Tuple, Optional
+from typing_extensions import Self
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -19,7 +20,39 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 class _customUNet(nn.Module):
+    
+    def freeze_encoder(self):
+        """Freeze all encoder (backbone) parameters."""
+        for block in self.encoder_blocks:
+            for param in block.parameters():
+                param.requires_grad = False
+        self.encoder_frozen = True
+        
+    def unfreeze_encoder(self):
+        """Unfreeze all encoder (backbone) parameters."""
+        for block in self.encoder_blocks:
+            for param in block.parameters():
+                param.requires_grad = True
+        self.encoder_frozen = False
+    
+    def train(self, mode: bool = True) -> Self:
+        """
+        Sets the module in training mode.
+        Overrides default behavior to keep frozen encoder in eval mode.
+        """
+        # Сначала вызываем стандартное поведение для всей модели.
+        super().train(mode)
 
+        if self.encoder_frozen:
+            for block in self.encoder_blocks:
+                block.eval()
+                # Рекурсивно убеждаемся, что все BatchNorm (и Dropout) переведены в eval.
+                for m in block.modules():
+                    if isinstance(m, (nn.BatchNorm2d, nn.Dropout)):
+                        m.eval()
+        
+        return self
+    
     def __init__(self,
                 in_channels: int,
                 out_channels: int,
