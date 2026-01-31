@@ -171,11 +171,11 @@ class ResNetTrainer(MetricsHistory):
             decay = self.configer.model_config.get('weight_decay'),
             lr = self.configer.model_config.get('base_lr')
             )
-        if optim_dict is not None:
+        if optim_dict is None:
+            print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
+        else:
             self.optimizer.load_state_dict(optim_dict)
             print(f"Resuming training {self.configer.model_config.get('model_name')} from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
-        else:
-            print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
 
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model parameters: {self.model_size}")
@@ -401,11 +401,11 @@ class UNetTrainer(MetricsHistory):
             decay = self.configer.model_config.get('weight_decay'),
             lr = self.configer.model_config.get('base_lr')
             )
-        if optim_dict is not None:
+        if optim_dict is None:
+            print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
+        else:
             self.optimizer.load_state_dict(optim_dict)
             print(f"Resuming training {self.configer.model_config.get('model_name')} from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
-        else:
-            print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
         
         # Set scheduler.
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -424,23 +424,24 @@ class UNetTrainer(MetricsHistory):
         if self.dataset == "moon-segmentation-binary":
             self.train_augmentation = A.Compose([
                 A.Resize(*mdl_input_size[1:]),
-                A.HorizontalFlip(p=0.5),
-                A.VerticalFlip(p=0.5),
-                A.RandomRotate90(p=0.5),
-                A.Affine(
-                    translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
-                    scale=(0.9, 1.1),
-                    rotate=(-45, 45),
-                    p=0.5
-                ),
-                A.OneOf([
-                    A.GaussNoise(var_limit=(10.0, 50.0)),
-                    A.GaussianBlur(blur_limit=(3, 7)),
-                    A.MedianBlur(blur_limit=5),
-                ], p=0.3),
-                A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
             ])
-
+            '''
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.Affine(
+                translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
+                scale=(0.9, 1.1),
+                rotate=(-45, 45),
+                p=0.5
+            ),
+            A.OneOf([
+                A.GaussNoise(var_limit=(10.0, 50.0)),
+                A.GaussianBlur(blur_limit=(3, 7)),
+                A.MedianBlur(blur_limit=5),
+            ], p=0.3),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+            '''
             self.val_augmentation = A.Compose([
                 A.Resize(*mdl_input_size[1:]),
             ])
@@ -463,7 +464,7 @@ class UNetTrainer(MetricsHistory):
             train_images, val_images = train_test_split(
                 all_images,
                 test_size=0.2,
-                random_state = self.configer.general_config.get('seed'))
+                random_state = self.configer.general_config['seed'])
             
             self.train_loader = DataLoader(
                 MoonSegmentationDataset(
@@ -472,7 +473,8 @@ class UNetTrainer(MetricsHistory):
                     img_prefix = img_prefix,
                     mask_prefix = mask_prefix,
                     augmentation = self.train_augmentation,
-                    preprocessing = self.preprocessing
+                    preprocessing = self.preprocessing,
+                    seed = self.configer.general_config['seed']
                     ), 
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=True,
@@ -487,7 +489,8 @@ class UNetTrainer(MetricsHistory):
                     img_prefix = img_prefix,
                     mask_prefix = mask_prefix,
                     augmentation = self.val_augmentation,
-                    preprocessing = self.preprocessing
+                    preprocessing = self.preprocessing,
+                    seed = self.configer.general_config['seed']
                     ), 
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
@@ -564,7 +567,7 @@ class UNetTrainer(MetricsHistory):
             
             if n == self.epoch_init + self.backbone_start_epoch:
                 self.net.unfreeze_encoder()
-                print(f"Backbone encoder training started (finetune next {self.configer.model_config['backbone_tune_epochs']} epochs).")
+                print(f"Encoder training started (backbone finetune next {self.configer.model_config['backbone_tune_epochs']} epochs).")
             
             self.__train()
             ret = self.__val()
