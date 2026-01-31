@@ -336,7 +336,7 @@ class UNetTrainer(MetricsHistory):
         # Training procedure.
         self.epoch = None
         self.epoch_init = None
-        self.backbone_start_epoch = None
+        self.encoder_start_epoch = None
         self.optimizer = None
         self.scheduler = None
         self.loss = None
@@ -393,7 +393,7 @@ class UNetTrainer(MetricsHistory):
             device = self.device
             )
         self.epoch = self.epoch_init
-        self.backbone_start_epoch = self.configer.model_config['epochs'] - self.configer.model_config['backbone_tune_epochs']
+        self.encoder_start_epoch = self.configer.model_config['epochs'] - self.configer.model_config['encoder_tune_epochs']
         # Set optimizer.
         self.optimizer = update_optimizer(
             net = self.net,
@@ -565,9 +565,9 @@ class UNetTrainer(MetricsHistory):
         for n in range(self.configer['epochs']):
             print("Starting epoch {} of {}.".format(self.epoch + 1, self.configer['epochs'] + self.epoch_init))
             
-            if n == self.epoch_init + self.backbone_start_epoch:
+            if n == self.epoch_init + self.encoder_start_epoch:
                 self.net.unfreeze_encoder()
-                print(f"Encoder training started (backbone finetune next {self.configer.model_config['backbone_tune_epochs']} epochs).")
+                print(f"Encoder training started (finetune next {self.configer.model_config['encoder_tune_epochs']} epochs).")
             
             self.__train()
             ret = self.__val()
