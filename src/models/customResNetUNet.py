@@ -120,13 +120,10 @@ def customResNetUNet(
             layer0_channels = backbone_layer0_channels,
             num_classes = None,
             pretrained = backbone_pretrained,
-            checkpoints_file = None if backbone_checkpoints_file is None else Path(backbone_checkpoints_file),
+            checkpoints_file = Path(backbone_checkpoints_file) if backbone_pretrained else None,
             device = device,
             zero_init_residual = backbone_zero_init_residual
         )
-    customResNetModel = customResNetModel.to(device)
-    if device.type == 'cuda' and torch.cuda.device_count() > 1:
-        customResNetModel = nn.DataParallel(customResNetModel)
 
     return _customResNetUNet(
         out_channels = out_channels,
