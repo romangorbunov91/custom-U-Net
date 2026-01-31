@@ -14,7 +14,8 @@ class MoonSegmentationDataset(Dataset):
         img_prefix: str,
         mask_prefix: str,
         augmentation: Optional[A.Compose] = None,
-        preprocessing: Optional[A.Compose] = None
+        preprocessing: Optional[A.Compose] = None,
+        seed: int = None
         ):
         super().__init__()
         
@@ -23,6 +24,7 @@ class MoonSegmentationDataset(Dataset):
         self.mask_prefix = mask_prefix
         self.augmentation = augmentation
         self.preprocessing = preprocessing
+        self.seed = seed
 
         self.img_dir = self.data_path / self.img_prefix
         self.mask_dir = self.data_path / self.mask_prefix
@@ -53,7 +55,7 @@ class MoonSegmentationDataset(Dataset):
         
         # Аугментации.
         if self.augmentation:
-            sample = self.augmentation(image=img, mask=mask)
+            sample = self.augmentation(image=img, mask=mask, seed = self.seed)
             img, mask = sample['image'], sample['mask']
         
         # Предобработка.
