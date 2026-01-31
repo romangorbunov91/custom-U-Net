@@ -169,7 +169,7 @@ if __name__ == "__main__":
         configer.output_file_name = (
             f"{str(configer.model_config.get('model_name'))}_"
             f"backbone_{backbone_name_no_ext}_"
-            f"finetune_last_{str(configer.model_config.get('backbone_tune_epochs'))}_epochs"
+            f"finetune_last_{str(configer.model_config.get('encoder_tune_epochs'))}_epochs"
             )
         '''
     else:
