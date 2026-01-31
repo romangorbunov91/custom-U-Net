@@ -15,6 +15,7 @@ def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True  # To have ~deterministic results
         torch.backends.cudnn.benchmark = False
@@ -24,8 +25,7 @@ def build_output_dict(
     train_history: Dict[str, List[float]],
     train_size: int,
     val_size: int,
-    model_param_count: int,
-    backbone_info: Optional[Dict[str, Any]] = None
+    model_param_count: int
 ) -> Dict[str, Any]:
 
     # Build metadata generically.
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     with open(dataset_config_path, "r") as f:
         configer.dataset_config = json.load(f)
         
-    set_seed(configer.general_config.get("seed"))
+    set_seed(configer.general_config['seed'])
 
     configer.device = configer.general_config.get("device").lower() if torch.cuda.is_available() else 'cpu'
     
