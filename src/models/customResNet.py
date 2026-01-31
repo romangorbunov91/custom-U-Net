@@ -189,13 +189,10 @@ def customResNet(
         num_classes = num_classes,
         zero_init_residual = zero_init_residual
     )
-      
-    if not pretrained:
-        checkpoints_file = None
-    
+
     net, epoch, optim_dict, _ = load_net(
         net = net,
-        checkpoints_file = checkpoints_file,
+        checkpoints_file = checkpoints_file if pretrained else None,
         device = device
         )
         
