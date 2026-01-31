@@ -11,5 +11,6 @@
   "weight_decay": 0.0001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 50
+  "epochs": 2,
+  "encoder_tune_epochs": 2
 }

@@ -11,13 +11,13 @@
   "weight_decay": 0.0001,
   "solver_type": "Adam",
   "batch_size": 100,
-  "epochs": 50,
+  "epochs": 2,
+  "encoder_tune_epochs": 1,
   "backbone_model_name": "best_customResNet.pth",
   "backbone_layers_num": 4,
   "backbone_block_size": 2,
   "backbone_base_lr": 0.0001,
   "backbone_weight_decay": 0.00001,
   "backbone_solver_type": "Adam",
-  "backbone_pretrained": false,
-  "backbone_tune_epochs": 50
+  "backbone_pretrained": false
 }
