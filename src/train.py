@@ -182,13 +182,17 @@ class ResNetTrainer(MetricsHistory):
         # Selecting Dataset and DataLoader.        
         if self.dataset == "tiny-imagenet-200":
             self.train_augmentations = transforms_v2.Compose([
+                transforms_v2.ToImage(),
+                transforms_v2.ToDtype(torch.float32, scale=True),
                 transforms_v2.Resize(
                     tuple(int(x * 1.125) for x in mdl_input_size[-2:]),
+                    interpolation=InterpolationMode.NEAREST,
                     antialias=True
                 ),
                 transforms_v2.RandomResizedCrop(
                     size=mdl_input_size[-1],
                     scale=(0.8, 1.0),
+                    interpolation=InterpolationMode.NEAREST,
                     antialias=True
                 ),
                 transforms_v2.RandomHorizontalFlip(p=0.5),
@@ -202,15 +206,16 @@ class ResNetTrainer(MetricsHistory):
             ])
 
             self.val_augmentations = transforms_v2.Compose([
+                transforms_v2.ToImage(),
+                transforms_v2.ToDtype(torch.float32, scale=True),
                 transforms_v2.Resize(
                     tuple(mdl_input_size[-2:]),
+                    interpolation=InterpolationMode.NEAREST,
                     antialias=True
                 )
             ])
             
             self.postprocessing = transforms_v2.Compose([
-                transforms_v2.ToImage(),
-                transforms_v2.ToDtype(torch.float32, scale=True),
                 transforms_v2.Normalize(mean=mean_norm, std=std_norm)
             ])
 
@@ -459,12 +464,12 @@ class UNetTrainer(MetricsHistory):
             
             self.train_photometric_augmentations = [
                 transforms_v2.ColorJitter(brightness=0.2, contrast=0.2),
-                transforms_v2.GaussianNoise(mean=0.0, sigma=(10.0/255.0, 50.0/255.0)),
+                transforms_v2.GaussianNoise(mean=0.0, sigma=0.1),
                 transforms_v2.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
             ]
 
             self.val_geometric_augmentations = transforms_v2.Compose([
-                transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
+                transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.NEAREST, antialias=True),
             ])
             
             self.val_photometric_augmentations = None
