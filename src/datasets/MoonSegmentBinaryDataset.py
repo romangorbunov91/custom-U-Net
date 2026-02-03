@@ -1,10 +1,10 @@
 import numpy as np
 import torch
-import cv2
+from PIL import Image
 from torch.utils.data import Dataset
-import albumentations as A
+import torchvision.transforms.v2 as transforms_v2
 from pathlib import Path
-from typing import Union, List, Tuple, Optional
+from typing import Union, List, Tuple, Callable, Optional
 
 class MoonSegmentationDataset(Dataset):
     def __init__(
@@ -13,18 +13,18 @@ class MoonSegmentationDataset(Dataset):
         samples: List[str],
         img_prefix: str,
         mask_prefix: str,
-        augmentation: Optional[A.Compose] = None,
-        preprocessing: Optional[A.Compose] = None,
-        seed: int = None
+        geometric_augmentations: Optional[transforms_v2.Compose] = None,
+        photometric_augmentations: Optional[List] = None,
+        postprocessing: Optional[transforms_v2.Compose] = None
         ):
         super().__init__()
         
         self.data_path = Path(data_path)
         self.img_prefix = img_prefix
         self.mask_prefix = mask_prefix
-        self.augmentation = augmentation
-        self.preprocessing = preprocessing
-        self.seed = seed
+        self.geometric_augmentations = geometric_augmentations
+        self.photometric_augmentations = photometric_augmentations
+        self.postprocessing = postprocessing
 
         self.img_dir = self.data_path / self.img_prefix
         self.mask_dir = self.data_path / self.mask_prefix
@@ -46,21 +46,32 @@ class MoonSegmentationDataset(Dataset):
         if not mask_path.exists():
             raise FileNotFoundError(f"Mask not found: {mask_path}")
         
-        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        img = Image.open(img_path).convert("RGB")
+        mask = Image.open(mask_path).convert("L")
 
-        assert np.all((mask == 0) | (mask == 255)), "Mask must be binary (0 or 255)"
-        # Бинарная маска [0, 1]: 0 = фон, 1 = камни.
-        mask = (mask == 255).astype(np.float32)
-        
-        # Аугментации.
-        if self.augmentation:
-            sample = self.augmentation(image=img, mask=mask, seed = self.seed)
-            img, mask = sample['image'], sample['mask']
-        
-        # Предобработка.
-        if self.preprocessing:
-            sample = self.preprocessing(image=img, mask=mask)
-            img, mask = sample['image'], sample['mask']
+        # Validate mask is binary (0 or 255)
+        mask_np = np.array(mask)
+        if not np.all((mask_np == 0) | (mask_np == 255)):
+            raise ValueError(f"Mask must be binary (0 or 255), got values: {np.unique(mask_np)}")
 
-        return img, mask.unsqueeze(0)
+        if self.geometric_augmentations is not None:
+            img, mask = self.geometric_augmentations(img, mask)
+        
+        img = transforms_v2.ToImage()(img)
+        img = transforms_v2.ToDtype(torch.float32, scale=True)(img)
+        
+        if self.photometric_augmentations is not None:
+            idx = torch.randint(0, len(self.photometric_augmentations), (1,)).item()
+            img = self.photometric_augmentations[idx](img)
+        print(img.shape, img.min(), img.max(), img.mean())
+        
+        if self.postprocessing is not None:
+            img = self.postprocessing(img)
+
+        mask = transforms_v2.ToImage()(mask)
+        mask = transforms_v2.ToDtype(torch.long, scale=False)(mask)
+        mask = (mask.squeeze(0) // 255).long()
+
+        print('image:', img.shape)
+        print('mask:', mask.shape)
+        return img.squeeze(0), mask.squeeze(0)

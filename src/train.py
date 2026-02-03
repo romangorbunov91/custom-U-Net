@@ -359,8 +359,10 @@ class UNetTrainer(MetricsHistory):
         self.optimizer = None
         self.scheduler = None
         self.loss = None
-        self.train_augmentations = None
-        self.val_augmentations = None
+        self.train_geometric_augmentations = None
+        self.train_photometric_augmentations = None
+        self.val_geometric_augmentations = None
+        self.val_photometric_augmentations = None
         self.postprocessing = None
                 
         #Chosen classes to work with.
@@ -441,7 +443,7 @@ class UNetTrainer(MetricsHistory):
         
         # Selecting Dataset and DataLoader.
         if self.dataset == "moon-segmentation-binary":
-            self.train_augmentations = transforms_v2.Compose([
+            self.train_geometric_augmentations = transforms_v2.Compose([
                 transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
                 transforms_v2.RandomHorizontalFlip(p=0.5),
                 transforms_v2.RandomVerticalFlip(p=0.5),
@@ -454,14 +456,20 @@ class UNetTrainer(MetricsHistory):
                     fill=0
                 ),
             ])
+            
+            self.train_photometric_augmentations = [
+                transforms_v2.ColorJitter(brightness=0.2, contrast=0.2),
+                transforms_v2.GaussianNoise(mean=0.0, sigma=(10.0/255.0, 50.0/255.0)),
+                transforms_v2.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
+            ]
 
-            self.val_augmentations = transforms_v2.Compose([
+            self.val_geometric_augmentations = transforms_v2.Compose([
                 transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
             ])
-
+            
+            self.val_photometric_augmentations = None
+            
             self.postprocessing = transforms_v2.Compose([
-                transforms_v2.ToImage(),
-                transforms_v2.ToDtype(torch.float32, scale=True),
                 transforms_v2.Normalize(mean=mean_norm, std=std_norm),
             ])
             
@@ -487,7 +495,8 @@ class UNetTrainer(MetricsHistory):
                     samples = train_images,
                     img_prefix = img_prefix,
                     mask_prefix = mask_prefix,
-                    augmentations = self.train_augmentations,
+                    geometric_augmentations = self.train_geometric_augmentations,
+                    photometric_augmentations = self.train_photometric_augmentations,
                     postprocessing = self.postprocessing
                     ), 
                 batch_size=self.configer.model_config.get("batch_size"),
@@ -502,7 +511,8 @@ class UNetTrainer(MetricsHistory):
                     samples = val_images,
                     img_prefix = img_prefix,
                     mask_prefix = mask_prefix,
-                    augmentations = self.val_augmentations,
+                    geometric_augmentations = self.val_geometric_augmentations,
+                    photometric_augmentations = self.val_photometric_augmentations,
                     postprocessing = self.postprocessing
                     ), 
                 batch_size=self.configer.model_config.get("batch_size"),
