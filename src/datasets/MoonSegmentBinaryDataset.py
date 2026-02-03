@@ -6,6 +6,12 @@ import torchvision.transforms.v2 as transforms_v2
 from pathlib import Path
 from typing import Union, List, Tuple, Callable, Optional
 
+def validate_mask(mask):
+    # Validate mask is binary (0 or 1)
+    mask_np = np.array(mask)
+    if not np.all((mask_np == 0) | (mask_np == 1)):
+        raise ValueError(f"Mask must be binary (0 or 1), got values: {np.unique(mask_np)}")
+
 class MoonSegmentationDataset(Dataset):
     def __init__(
         self,
@@ -17,6 +23,7 @@ class MoonSegmentationDataset(Dataset):
         photometric_augmentations: Optional[List] = None,
         postprocessing: Optional[transforms_v2.Compose] = None
         ):
+        
         super().__init__()
         
         self.data_path = Path(data_path)
@@ -48,30 +55,25 @@ class MoonSegmentationDataset(Dataset):
         
         img = Image.open(img_path).convert("RGB")
         mask = Image.open(mask_path).convert("L")
-
-        # Validate mask is binary (0 or 255)
-        mask_np = np.array(mask)
-        if not np.all((mask_np == 0) | (mask_np == 255)):
-            raise ValueError(f"Mask must be binary (0 or 255), got values: {np.unique(mask_np)}")
-
-        if self.geometric_augmentations is not None:
-            img, mask = self.geometric_augmentations(img, mask)
         
         img = transforms_v2.ToImage()(img)
         img = transforms_v2.ToDtype(torch.float32, scale=True)(img)
+
+        mask = (np.array(mask) > 0).astype(np.uint8)
+        validate_mask(mask)
         
+        mask = transforms_v2.ToImage()(mask)
+        mask = mask.to(torch.int8)
+
+        if self.geometric_augmentations is not None:
+            img, mask = self.geometric_augmentations(img, mask)
+        validate_mask(mask)
+
         if self.photometric_augmentations is not None:
-            idx = torch.randint(0, len(self.photometric_augmentations), (1,)).item()
-            img = self.photometric_augmentations[idx](img)
-        print(img.shape, img.min(), img.max(), img.mean())
-        
+            aug_idx = torch.randint(0, len(self.photometric_augmentations), (1,)).item()
+            img = self.photometric_augmentations[aug_idx](img)
+
         if self.postprocessing is not None:
             img = self.postprocessing(img)
-
-        mask = transforms_v2.ToImage()(mask)
-        mask = transforms_v2.ToDtype(torch.long, scale=False)(mask)
-        mask = (mask.squeeze(0) // 255).long()
-
-        print('image:', img.shape)
-        print('mask:', mask.shape)
-        return img.squeeze(0), mask.squeeze(0)
+        
+        return img, mask.to(torch.float32)
