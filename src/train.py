@@ -193,7 +193,12 @@ class ResNetTrainer(MetricsHistory):
                 ),
                 transforms_v2.RandomHorizontalFlip(p=0.5),
                 transforms_v2.RandomRotation(degrees=10),
-                transforms_v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1)
+                transforms_v2.ColorJitter(
+                    brightness=0.2,
+                    contrast=0.2,
+                    saturation=0.2,
+                    hue=0.1
+                )
             ])
 
             self.val_augmentations = transforms_v2.Compose([
@@ -440,7 +445,7 @@ class UNetTrainer(MetricsHistory):
                 transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
                 transforms_v2.RandomHorizontalFlip(p=0.5),
                 transforms_v2.RandomVerticalFlip(p=0.5),
-                transforms_v2.RandomRotation(degrees=45, interpolation=InterpolationMode.BILINEAR, expand=False, fill=0),
+                transforms_v2.RandomRotation(degrees=45),
                 transforms_v2.RandomAffine(
                     degrees=0,
                     translate=(0.1, 0.1),
@@ -455,8 +460,8 @@ class UNetTrainer(MetricsHistory):
             ])
 
             self.postprocessing = transforms_v2.Compose([
-                transforms_v2.ToImage(),  # Converts PIL or ndarray to Tensor-like (CHW)
-                transforms_v2.ToDtype(torch.float32, scale=True),  # Scales [0,255] → [0,1] if needed
+                transforms_v2.ToImage(),
+                transforms_v2.ToDtype(torch.float32, scale=True),
                 transforms_v2.Normalize(mean=mean_norm, std=std_norm),
             ])
             
