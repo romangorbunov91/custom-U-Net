@@ -82,8 +82,11 @@ class TinyImageNetDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         img_path, label = self.samples[idx]
         img = Image.open(img_path).convert('RGB')
+               
         if self.augmentations is not None:
             img = self.augmentations(img)
+                
         if self.postprocessing is not None:
             img = self.postprocessing(img)
+                
         return img, label
