@@ -2,7 +2,7 @@ import os
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+import torchvision.transforms.v2 as transforms_v2
 from pathlib import Path
 from typing import Union, List, Tuple, Optional
 
@@ -11,13 +11,15 @@ class TinyImageNetDataset(Dataset):
         self,
         data_path: Union[str, Path],
         split: str = 'train',
-        transform: Optional[transforms.Compose] = None,
+        augmentations: Optional[transforms_v2.Compose] = None,
+        postprocessing: Optional[transforms_v2.Compose] = None,
         selected_classes: Optional[List[str]] = None
         ):
         super().__init__()
         
         self.data_path = Path(data_path)
-        self.transform = transform
+        self.augmentations = augmentations
+        self.postprocessing = postprocessing
         self.selected_classes = selected_classes
         
         # Read all class names.
@@ -80,5 +82,8 @@ class TinyImageNetDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         img_path, label = self.samples[idx]
         img = Image.open(img_path).convert('RGB')
-        img = self.transform(img)
+        if self.augmentations:
+            img = self.augmentations(img)
+        if self.postprocessing:
+            img = self.postprocessing(img)
         return img, label

@@ -6,10 +6,8 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 import torch
 import torch.nn as nn
-import torchvision.transforms as transforms
-
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
+import torchvision.transforms.v2 as transforms_v2
+from torchvision.transforms.v2 import InterpolationMode
 
 # Import Utils.
 from torch.utils.data import DataLoader
@@ -128,8 +126,9 @@ class ResNetTrainer(MetricsHistory):
         self.optimizer = None
         self.scheduler = None
         self.loss_func = None
-        self.train_transforms = None
-        self.val_transforms = None
+        self.train_augmentations = None
+        self.val_augmentations = None
+        self.postprocessing = None
         
         #Chosen classes to work with.
         self.selected_classes = self.configer.dataset_config.get("selected_classes")
@@ -182,21 +181,34 @@ class ResNetTrainer(MetricsHistory):
         
         # Selecting Dataset and DataLoader.        
         if self.dataset == "tiny-imagenet-200":
-            self.train_transforms = transforms.Compose([
-                transforms.Resize(tuple([int(mdl_input_size[1] * 1.125)]*2)),
-                transforms.RandomResizedCrop(mdl_input_size[1], scale=(0.8, 1.0)),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(10),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=mean_norm, std=std_norm)
+            self.train_augmentations = transforms_v2.Compose([
+                transforms_v2.Resize(
+                    tuple(int(x * 1.125) for x in mdl_input_size[-2:]),
+                    antialias=True
+                ),
+                transforms_v2.RandomResizedCrop(
+                    size=mdl_input_size[-1],
+                    scale=(0.8, 1.0),
+                    antialias=True
+                ),
+                transforms_v2.RandomHorizontalFlip(p=0.5),
+                transforms_v2.RandomRotation(degrees=10),
+                transforms_v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1)
             ])
 
-            self.val_transforms = transforms.Compose([
-                transforms.Resize(tuple(mdl_input_size[1:])),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=mean_norm, std=std_norm)
+            self.val_augmentations = transforms_v2.Compose([
+                transforms_v2.Resize(
+                    tuple(mdl_input_size[-2:]),
+                    antialias=True
+                )
             ])
+            
+            self.postprocessing = transforms_v2.Compose([
+                transforms_v2.ToImage(),
+                transforms_v2.ToDtype(torch.float32, scale=True),
+                transforms_v2.Normalize(mean=mean_norm, std=std_norm)
+            ])
+
         else:
             raise NotImplementedError(f"Dataset not supported: {self.dataset}")
 
@@ -206,7 +218,8 @@ class ResNetTrainer(MetricsHistory):
                 TinyImageNetDataset(
                     data_path = self.data_path,
                     split = "train",
-                    transform = self.train_transforms,
+                    augmentations = self.train_augmentations,
+                    postprocessing = self.postprocessing,
                     selected_classes = self.selected_classes
                     ),
                 batch_size=self.configer.model_config.get("batch_size"),
@@ -219,7 +232,8 @@ class ResNetTrainer(MetricsHistory):
                 TinyImageNetDataset(
                     data_path = self.data_path,
                     split = "val",
-                    transform = self.val_transforms,
+                    augmentations = self.val_augmentations,
+                    postprocessing = self.postprocessing,
                     selected_classes = self.selected_classes
                     ),
                 batch_size=self.configer.model_config.get("batch_size"),
@@ -340,9 +354,9 @@ class UNetTrainer(MetricsHistory):
         self.optimizer = None
         self.scheduler = None
         self.loss = None
-        self.train_augmentation = None
-        self.val_augmentation = None
-        self.preprocessing = None
+        self.train_augmentations = None
+        self.val_augmentations = None
+        self.postprocessing = None
                 
         #Chosen classes to work with.
         self.selected_classes = None
@@ -422,34 +436,30 @@ class UNetTrainer(MetricsHistory):
         
         # Selecting Dataset and DataLoader.
         if self.dataset == "moon-segmentation-binary":
-            self.train_augmentation = A.Compose([
-                A.Resize(*mdl_input_size[1:]),
-            ])
-            '''
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomRotate90(p=0.5),
-            A.Affine(
-                translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
-                scale=(0.9, 1.1),
-                rotate=(-45, 45),
-                p=0.5
-            ),
-            A.OneOf([
-                A.GaussNoise(var_limit=(10.0, 50.0)),
-                A.GaussianBlur(blur_limit=(3, 7)),
-                A.MedianBlur(blur_limit=5),
-            ], p=0.3),
-            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
-            '''
-            self.val_augmentation = A.Compose([
-                A.Resize(*mdl_input_size[1:]),
+            self.train_augmentations = transforms_v2.Compose([
+                transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
+                transforms_v2.RandomHorizontalFlip(p=0.5),
+                transforms_v2.RandomVerticalFlip(p=0.5),
+                transforms_v2.RandomRotation(degrees=45, interpolation=InterpolationMode.BILINEAR, expand=False, fill=0),
+                transforms_v2.RandomAffine(
+                    degrees=0,
+                    translate=(0.1, 0.1),
+                    scale=(0.9, 1.1),
+                    interpolation=InterpolationMode.BILINEAR,
+                    fill=0
+                ),
             ])
 
-            self.preprocessing = A.Compose([
-                A.Normalize(mean=mean_norm, std=std_norm),
-                ToTensorV2(),
-            ])  
+            self.val_augmentations = transforms_v2.Compose([
+                transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
+            ])
+
+            self.postprocessing = transforms_v2.Compose([
+                transforms_v2.ToImage(),  # Converts PIL or ndarray to Tensor-like (CHW)
+                transforms_v2.ToDtype(torch.float32, scale=True),  # Scales [0,255] → [0,1] if needed
+                transforms_v2.Normalize(mean=mean_norm, std=std_norm),
+            ])
+            
         else:
             raise NotImplementedError(f"Dataset not supported: {self.dataset}")
 
@@ -472,9 +482,8 @@ class UNetTrainer(MetricsHistory):
                     samples = train_images,
                     img_prefix = img_prefix,
                     mask_prefix = mask_prefix,
-                    augmentation = self.train_augmentation,
-                    preprocessing = self.preprocessing,
-                    seed = self.configer.general_config['seed']
+                    augmentations = self.train_augmentations,
+                    postprocessing = self.postprocessing
                     ), 
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=True,
@@ -488,9 +497,8 @@ class UNetTrainer(MetricsHistory):
                     samples = val_images,
                     img_prefix = img_prefix,
                     mask_prefix = mask_prefix,
-                    augmentation = self.val_augmentation,
-                    preprocessing = self.preprocessing,
-                    seed = self.configer.general_config['seed']
+                    augmentations = self.val_augmentations,
+                    postprocessing = self.postprocessing
                     ), 
                 batch_size=self.configer.model_config.get("batch_size"),
                 shuffle=False,
