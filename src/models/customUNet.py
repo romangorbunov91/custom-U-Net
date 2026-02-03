@@ -60,6 +60,8 @@ class _customUNet(nn.Module):
                 ):
         super(_customUNet, self).__init__()
         
+        self.encoder_frozen = False
+        
         self.encoder_blocks = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
 
@@ -109,8 +111,8 @@ class _customUNet(nn.Module):
             x = self.decoder_blocks[idx + 1](x)
 
         x = self.final_conv(x)
-        output = torch.sigmoid(x)
-        return output
+        #output = torch.sigmoid(x)
+        return x
 
 def customUNet(
     in_channels: int,

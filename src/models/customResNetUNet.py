@@ -122,8 +122,8 @@ class _customResNetUNet(nn.Module):
             x = self.decoder_blocks[idx + 1](x)
 
         x = self.final_conv(x)
-        output = torch.sigmoid(x)
-        return output
+        #output = torch.sigmoid(x)
+        return x
 
 def customResNetUNet(
     in_channels: int,

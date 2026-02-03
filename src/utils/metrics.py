@@ -28,8 +28,8 @@ class DiceLoss(nn.Module):
         super(DiceLoss, self).__init__()
         self.smooth = smooth
     
-    def forward(self, predictions, targets):
-        #predictions = torch.sigmoid(predictions)
+    def forward(self, logits, targets):
+        predictions = torch.sigmoid(logits)
         
         # Flatten
         predictions = predictions.view(-1)
@@ -48,21 +48,19 @@ class CombinedLoss(nn.Module):
         super(CombinedLoss, self).__init__()
         self.bce_weight = bce_weight
         self.dice_weight = dice_weight
-        #self.bce = nn.BCEWithLogitsLoss()
-        self.bce = nn.BCELoss()
+        self.bce = nn.BCEWithLogitsLoss()
         self.dice = DiceLoss()
     
-    def forward(self, predictions, targets):
-        bce_loss = self.bce(predictions, targets)
-        dice_loss = self.dice(predictions, targets)
+    def forward(self, logits, targets):
+        bce_loss = self.bce(logits, targets)
+        dice_loss = self.dice(logits, targets)
         
         return self.bce_weight * bce_loss + self.dice_weight * dice_loss
 
 
-def dice_coefficient(predictions, targets, threshold=0.5, smooth=1e-6):
+def dice_coefficient(logits, targets, threshold=0.5, smooth=1e-6):
 
-    #predictions = torch.sigmoid(predictions)
-    predictions = (predictions > threshold).float()
+    predictions = (torch.sigmoid(logits) > threshold).float()
     
     predictions = predictions.view(-1)
     targets = targets.view(-1)
@@ -73,10 +71,9 @@ def dice_coefficient(predictions, targets, threshold=0.5, smooth=1e-6):
     return dice.item()
 
 
-def iou_score(predictions, targets, threshold=0.5, smooth=1e-6):
+def iou_score(logits, targets, threshold=0.5, smooth=1e-6):
 
-    #predictions = torch.sigmoid(predictions)
-    predictions = (predictions > threshold).float()
+    predictions = (torch.sigmoid(logits) > threshold).float()
     
     predictions = predictions.view(-1)
     targets = targets.view(-1)
@@ -89,10 +86,9 @@ def iou_score(predictions, targets, threshold=0.5, smooth=1e-6):
     return iou.item()
 
 
-def pixel_accuracy(predictions, targets, threshold=0.5):
+def pixel_accuracy(logits, targets, threshold=0.5):
 
-    #predictions = torch.sigmoid(predictions)
-    predictions = (predictions > threshold).float()
+    predictions = (torch.sigmoid(logits) > threshold).float()
     correct = (predictions == targets).float().sum()
     total = targets.numel()
     
