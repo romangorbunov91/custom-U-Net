@@ -25,14 +25,14 @@ class DoubleConv(nn.Module):
 class _customResNetUNet(nn.Module):
     
     def freeze_encoder(self):
-        """Freeze all encoder (backbone) parameters."""
+        # Freeze all encoder (backbone) parameters.
         for block in self.encoder_blocks:
             for param in block.parameters():
                 param.requires_grad = False
         self.encoder_frozen = True
         
     def unfreeze_encoder(self):
-        """Unfreeze all encoder (backbone) parameters."""
+        # Unfreeze all encoder (backbone) parameters.
         for block in self.encoder_blocks:
             for param in block.parameters():
                 param.requires_grad = True
