@@ -43,33 +43,40 @@ def load_net(
 
 def update_optimizer(
         net: nn.Module,
-        optim,
-        decay,
-        lr
+        optim: str,
+        lr: float,
+        decay: float,
+        encoder_lr: Optional[float] = None,
+        encoder_decay: Optional[float] = None
     ):
+    if hasattr(net, 'encoder_blocks'):
+        print("Individual optimizer settings for encoder.")
+        encoder_params = []
+        for block in net.encoder_blocks:
+            encoder_params.extend(block.parameters())
+        encoder_param_ids = {id(p) for p in encoder_params}
 
+        params_no_encoder = [p for p in net.parameters() if id(p) not in encoder_param_ids]
+
+        param_groups = [
+            {"params": params_no_encoder, "lr": lr, "weight_decay": decay},
+            {"params": encoder_params, "lr": encoder_lr, "weight_decay": encoder_decay},
+        ]
+    else:
+        # Default: all parameters.
+        param_groups = [{"params": filter(lambda p: p.requires_grad, net.parameters()), "lr": lr, "weight_decay": decay}]
+        
     if optim == "Adam":
-        optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, net.parameters()),
-            lr=lr,
-            weight_decay=decay)
+        return torch.optim.Adam(param_groups)
 
     elif optim == "AdamW":
-        optimizer = torch.optim.AdamW(
-            filter(lambda p: p.requires_grad, net.parameters()),
-            lr=lr,
-            weight_decay=decay)
+        return torch.optim.AdamW(param_groups)
 
     elif optim == "RMSProp":
-        optimizer = torch.optim.RMSprop(
-            filter(lambda p: p.requires_grad, net.parameters()),
-            lr=lr,
-            weight_decay=decay)
-        
+        return torch.optim.RMSprop(param_groups)
+    
     else:
-        raise NotImplementedError(f"Optimizer: {optim} is not valid.")
-
-    return optimizer
+        raise NotImplementedError(f"Optimizer: {optim} is not valid.") 
 
 class ModelUtilizer(object):
     """Module utility class

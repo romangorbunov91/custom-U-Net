@@ -167,8 +167,8 @@ class ResNetTrainer(MetricsHistory):
         self.optimizer = update_optimizer(
             net = self.net,
             optim = self.configer.model_config.get('solver_type'),
-            decay = self.configer.model_config.get('weight_decay'),
-            lr = self.configer.model_config.get('base_lr')
+            lr = self.configer.model_config.get('base_lr'),
+            decay = self.configer.model_config.get('weight_decay')
             )
         if optim_dict is None:
             print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
@@ -424,8 +424,10 @@ class UNetTrainer(MetricsHistory):
         self.optimizer = update_optimizer(
             net = self.net,
             optim = self.configer.model_config.get('solver_type'),
+            lr = self.configer.model_config.get('base_lr'),
             decay = self.configer.model_config.get('weight_decay'),
-            lr = self.configer.model_config.get('base_lr')
+            encoder_lr = self.configer.model_config.get('encoder_base_lr'),
+            encoder_decay = self.configer.model_config.get('encoder_weight_decay')
             )
         if optim_dict is None:
             print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
