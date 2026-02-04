@@ -116,6 +116,8 @@ python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume c
 
 ## Часть 3. U-Net с бэкбоном из классификатора
 
+num_classes = None - убирает голову модели.
+
 [customResNetUNet](src/models/customResNetUNet.py) в конфигурации:
 - каналы: `[18, 36, 72, 144]`;
 - функция активации: `activation=ReLU`;
