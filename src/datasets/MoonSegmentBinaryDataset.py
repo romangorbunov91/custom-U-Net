@@ -6,11 +6,13 @@ import torchvision.transforms.v2 as transforms_v2
 from pathlib import Path
 from typing import Union, List, Tuple, Callable, Optional
 
-def validate_mask(mask):
-    # Validate mask is binary (0 or 1)
-    mask_np = np.array(mask)
-    if not np.all((mask_np == 0) | (mask_np == 1)):
-        raise ValueError(f"Mask must be binary (0 or 1), got values: {np.unique(mask_np)}")
+def validate_binary(input, eps = 1e-3):
+    # Validate 0 or 1.
+    input_np = np.array(input)
+    valid_mask = (np.abs(input_np) < eps) | (np.abs(input_np - 1) < eps)
+    if not np.all(valid_mask):
+        invalid_values = np.unique(input_np[~valid_mask])
+        raise ValueError(f"Must be binary (0 or 1), got invalid values: {invalid_values}")
 
 class MoonSegmentationDataset(Dataset):
     def __init__(
@@ -59,21 +61,24 @@ class MoonSegmentationDataset(Dataset):
         img = transforms_v2.ToImage()(img)
         img = transforms_v2.ToDtype(torch.float32, scale=True)(img)
 
-        mask = (np.array(mask) > 0).astype(np.uint8)
-        validate_mask(mask)
+        mask = (np.array(mask) > 0).astype(np.float32)
         
         mask = transforms_v2.ToImage()(mask)
-        mask = mask.to(torch.int8)
-
+        # Convert mask to uint, otherwise augmentations make it smooth.
+        # After augmentations convert back to float32.
+        mask = mask.to(torch.uint8)
+        
         if self.geometric_augmentations is not None:
             img, mask = self.geometric_augmentations(img, mask)
-        validate_mask(mask)
-
+        
         if self.photometric_augmentations is not None:
             aug_idx = torch.randint(0, len(self.photometric_augmentations), (1,)).item()
             img = self.photometric_augmentations[aug_idx](img)
-
+        
         if self.postprocessing is not None:
             img = self.postprocessing(img)
         
-        return img, mask.to(torch.float32)
+        mask = mask.to(torch.float32)
+        validate_binary(mask)
+        
+        return img, mask
