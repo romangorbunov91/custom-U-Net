@@ -449,7 +449,11 @@ class UNetTrainer(MetricsHistory):
         # Selecting Dataset and DataLoader.
         if self.dataset == "moon-segmentation-binary":
             self.train_geometric_augmentations = transforms_v2.Compose([
-                transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.BILINEAR, antialias=True),
+                transforms_v2.Resize(
+                    size=tuple(mdl_input_size[-2:]),
+                    interpolation=InterpolationMode.BILINEAR,
+                    antialias=True
+                ),
                 transforms_v2.RandomHorizontalFlip(p=0.5),
                 transforms_v2.RandomVerticalFlip(p=0.5),
                 transforms_v2.RandomRotation(degrees=45),
@@ -469,7 +473,11 @@ class UNetTrainer(MetricsHistory):
             ]
 
             self.val_geometric_augmentations = transforms_v2.Compose([
-                transforms_v2.Resize(size=tuple(mdl_input_size[-2:]), interpolation=InterpolationMode.NEAREST, antialias=True),
+                transforms_v2.Resize(
+                    size=tuple(mdl_input_size[-2:]),
+                    interpolation=InterpolationMode.NEAREST,
+                    antialias=True
+                ),
             ])
             
             self.val_photometric_augmentations = None
@@ -537,7 +545,7 @@ class UNetTrainer(MetricsHistory):
         for data_tuple in tqdm(self.train_loader, desc="Train"):
 
             inputs, masks = data_tuple[0].to(self.device), data_tuple[1].to(self.device)
-
+            
             outputs = self.net(inputs)
 
             self.optimizer.zero_grad()
