@@ -85,8 +85,8 @@ class TinyImageNetDataset(Dataset):
                
         if self.augmentations is not None:
             img = self.augmentations(img)
-                
+
         if self.postprocessing is not None:
             img = self.postprocessing(img)
-                
+
         return img, label
