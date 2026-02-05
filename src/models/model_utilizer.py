@@ -60,7 +60,7 @@ def update_optimizer(
 
         param_groups = [
             {"params": params_no_encoder, "lr": lr, "weight_decay": decay},
-            {"params": encoder_params, "lr": encoder_lr, "weight_decay": encoder_decay},
+            {"params": encoder_params, "lr": encoder_lr, "weight_decay": encoder_decay}
         ]
     else:
         # Default: all parameters.

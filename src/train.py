@@ -49,6 +49,7 @@ class MetricsHistory:
         self.train_history = {key: [] for key in history_keys}
         self.train_history["epoch"] = []
         self.train_history["lr"] = []
+        self.train_history["encoder_lr"] = []
     
     def print_metrics(self, phases):
         phase_keys = [phase.lower() for phase in phases]
@@ -75,6 +76,10 @@ class MetricsHistory:
         
         if hasattr(self, 'optimizer'):
             self.train_history["lr"].append(self.optimizer.param_groups[0]["lr"])
+            if len(self.optimizer.param_groups) > 1:
+                self.train_history["encoder_lr"].append(self.optimizer.param_groups[1]["lr"])
+            else:
+                self.train_history["encoder_lr"].append(None) 
         
         phase_keys = [phase.lower() for phase in phases]
         for name in self.metrics:
@@ -271,7 +276,7 @@ class ResNetTrainer(MetricsHistory):
             loss = self.loss_func(output, gt)
             loss.backward()
 
-            torch.nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
+            nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
             self.optimizer.step()
 
             predicted = torch.argmax(output.detach(), dim=1)
@@ -553,7 +558,7 @@ class UNetTrainer(MetricsHistory):
             self.optimizer.zero_grad()
             loss = self.loss_func(outputs, masks)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
+            nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=1)
             self.optimizer.step()
 
             self.update_metrics(

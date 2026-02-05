@@ -75,9 +75,13 @@ def build_output_dict(
     # Build train_log dynamically.
     train_log = []
     for i in range(len(train_history["epoch"])):
-        log_entry = {"epoch": train_history["epoch"][i], "lr": train_history["lr"][i]}
+        log_entry = {
+            "epoch": train_history["epoch"][i],
+            "lr": train_history["lr"][i],
+            "encoder_lr": train_history["encoder_lr"][i]
+            }
         for key in train_history:
-            if key != "epoch" and key != "lr":
+            if key != "epoch" and key != "lr" and key != "encoder_lr":
                 log_entry[key] = train_history[key][i]
         train_log.append(log_entry)
 
