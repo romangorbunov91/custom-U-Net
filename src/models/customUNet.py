@@ -40,17 +40,11 @@ class _customUNet(nn.Module):
         Sets the module in training mode.
         Overrides default behavior to keep frozen encoder in eval mode.
         """
-        # Сначала вызываем стандартное поведение для всей модели.
         super().train(mode)
 
         if self.encoder_frozen:
             for block in self.encoder_blocks:
                 block.eval()
-                # Рекурсивно убеждаемся, что все BatchNorm (и Dropout) переведены в eval.
-                for m in block.modules():
-                    if isinstance(m, (nn.BatchNorm2d, nn.Dropout)):
-                        m.eval()
-        
         return self
     
     def __init__(self,
