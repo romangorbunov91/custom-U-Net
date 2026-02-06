@@ -12,7 +12,7 @@
   "solver_type": "Adam",
   "batch_size": 100,
   "epochs": 100,
-  "encoder_tune_epochs": 70,
+  "encoder_tune_epochs": 50,
   "backbone_model_name": "best_customResNet.pth",
   "backbone_layers_num": 4,
   "backbone_block_size": 2,
