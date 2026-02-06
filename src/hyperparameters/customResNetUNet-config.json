@@ -3,7 +3,7 @@
   "feature_list": [18, 36, 72, 144],
   "checkpoints_save_policy": "best",
   "checkpoints_metric": "dice",
-  "early_stop_number": 10,
+  "early_stop_number": 40,
   "dataset_name": "moon-segmentation-binary",
   "workers": 4,
   "input_size": [3, 128, 128],
@@ -12,11 +12,11 @@
   "solver_type": "Adam",
   "batch_size": 100,
   "epochs": 100,
-  "encoder_tune_epochs": 90,
+  "encoder_tune_epochs": 70,
   "backbone_model_name": "best_customResNet.pth",
   "backbone_layers_num": 4,
   "backbone_block_size": 2,
-  "encoder_base_lr": 0.001,
-  "encoder_weight_decay": 0.0001,
+  "encoder_base_lr": 0.0001,
+  "encoder_weight_decay": 0.00001,
   "backbone_pretrained": true
 }
