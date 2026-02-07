@@ -407,9 +407,9 @@ class UNetTrainer(MetricsHistory):
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
                 out_channels = 1,
-                features = self.configer.model_config.get("feature_list"),
-                backbone_layers_config = self.configer.model_config.get("backbone_layers_num")*[self.configer.model_config.get("backbone_block_size")],
-                backbone_layer0_channels = self.configer.model_config.get("feature_list")[0],
+                features = self.configer.model_config['feature_list'],
+                backbone_layers_config = self.configer.model_config['backbone_layers_num']*[self.configer.model_config['backbone_block_size']],
+                backbone_layer0_channels = self.configer.model_config['feature_list'][0],
                 backbone_pretrained = pretrained_flag,
                 backbone_checkpoints_file = backbone_checkpoints_file,
                 device = self.device
@@ -430,9 +430,8 @@ class UNetTrainer(MetricsHistory):
             net = self.net,
             optim = self.configer.model_config.get('solver_type'),
             lr = self.configer.model_config.get('base_lr'),
-            decay = 0.0,
-            encoder_lr = self.configer.model_config.get('encoder_base_lr'),
-            encoder_decay = 0.0
+            decay = self.configer.model_config.get('weight_decay'),
+            encoder_lr = self.configer.model_config.get('encoder_base_lr')
             )
         if optim_dict is None:
             print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
@@ -444,8 +443,8 @@ class UNetTrainer(MetricsHistory):
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
             mode='max',
-            factor=0.5, 
-            patience=3, 
+            factor=0.85, 
+            patience=5, 
         )
         if sched_dict is not None:
             self.scheduler.load_state_dict(sched_dict)
@@ -610,9 +609,6 @@ class UNetTrainer(MetricsHistory):
             
             if n == self.epoch_init + self.encoder_start_epoch:
                 self.net.unfreeze_encoder()
-                
-                self.optimizer.param_groups[0]["weight_decay"] = self.configer.model_config.get('weight_decay')
-                self.optimizer.param_groups[1]["weight_decay"] = self.configer.model_config.get('encoder_weight_decay')
                 
                 print(f"Encoder training started (finetune next {self.configer.model_config['encoder_tune_epochs']} epochs).")
             

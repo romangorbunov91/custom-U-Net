@@ -37,7 +37,7 @@ class _customResNetUNet(nn.Module):
             for param in block.parameters():
                 param.requires_grad = True
         self.encoder_frozen = False
-    
+    '''
     def train(self, mode: bool = True) -> Self:
         """
         Sets the module in training mode.
@@ -55,7 +55,7 @@ class _customResNetUNet(nn.Module):
                         m.eval()
         
         return self
-        
+    '''    
     def __init__(self,
                 out_channels: int,
                 features: List[int],

@@ -46,8 +46,7 @@ def update_optimizer(
         optim: str,
         lr: float,
         decay: float,
-        encoder_lr: Optional[float] = None,
-        encoder_decay: Optional[float] = None
+        encoder_lr: Optional[float] = None
     ):
     if hasattr(net, 'encoder_blocks'):
         print("Individual optimizer settings for encoder.")
@@ -60,7 +59,7 @@ def update_optimizer(
 
         param_groups = [
             {"params": params_no_encoder, "lr": lr, "weight_decay": decay},
-            {"params": encoder_params, "lr": encoder_lr, "weight_decay": encoder_decay}
+            {"params": encoder_params, "lr": encoder_lr, "weight_decay": decay}
         ]
     else:
         # Default: all parameters.

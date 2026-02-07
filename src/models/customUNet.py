@@ -34,7 +34,7 @@ class _customUNet(nn.Module):
             for param in block.parameters():
                 param.requires_grad = True
         self.encoder_frozen = False
-    
+    '''
     def train(self, mode: bool = True) -> Self:
         """
         Sets the module in training mode.
@@ -46,7 +46,7 @@ class _customUNet(nn.Module):
             for block in self.encoder_blocks:
                 block.eval()
         return self
-    
+    '''
     def __init__(self,
                 in_channels: int,
                 out_channels: int,
