@@ -451,6 +451,7 @@ class UNetTrainer(MetricsHistory):
             )
             if sched_dict is not None:
                 self.scheduler.load_state_dict(sched_dict)
+            print("Scheduler ON")
         
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model parameters: {self.model_size}")
