@@ -407,9 +407,9 @@ class UNetTrainer(MetricsHistory):
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
                 out_channels = 1,
-                features = self.configer.model_config.get("feature_list"),
-                backbone_layers_config = self.configer.model_config.get("backbone_layers_num")*[self.configer.model_config.get("backbone_block_size")],
-                backbone_layer0_channels = self.configer.model_config.get("feature_list")[0],
+                features = self.configer.model_config['feature_list'],
+                backbone_layers_config = self.configer.model_config['backbone_layers_num']*[self.configer.model_config['backbone_block_size']],
+                backbone_layer0_channels = self.configer.model_config['feature_list'][0],
                 backbone_pretrained = pretrained_flag,
                 backbone_checkpoints_file = backbone_checkpoints_file,
                 device = self.device
