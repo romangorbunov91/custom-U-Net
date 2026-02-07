@@ -17,5 +17,6 @@
   "backbone_layers_num": 4,
   "backbone_block_size": 2,
   "encoder_base_lr": 0.0001,
-  "backbone_pretrained": true
+  "backbone_pretrained": true,
+  "scheduler_on": false
 }

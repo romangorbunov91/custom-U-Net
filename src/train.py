@@ -425,6 +425,7 @@ class UNetTrainer(MetricsHistory):
             )
         self.epoch = self.epoch_init
         self.encoder_start_epoch = self.configer.model_config['epochs'] - self.configer.model_config['encoder_tune_epochs']
+        
         # Set optimizer.
         self.optimizer = update_optimizer(
             net = self.net,
@@ -433,21 +434,23 @@ class UNetTrainer(MetricsHistory):
             decay = self.configer.model_config.get('weight_decay'),
             encoder_lr = self.configer.model_config.get('encoder_base_lr')
             )
+        
         if optim_dict is None:
             print(f"Starting training {self.configer.model_config.get('model_name')} from scratch using {self.configer.model_config.get('solver_type')}.")
         else:
             self.optimizer.load_state_dict(optim_dict)
             print(f"Resuming training {self.configer.model_config.get('model_name')} from epoch {self.epoch} using {self.configer.model_config.get('solver_type')}.")
         
-        # Set scheduler.
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, 
-            mode='max',
-            factor=0.85, 
-            patience=5, 
-        )
-        if sched_dict is not None:
-            self.scheduler.load_state_dict(sched_dict)
+        if bool(self.configer.model_config['scheduler_on']):
+            # Set scheduler.
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer, 
+                mode='max',
+                factor=0.85, 
+                patience=5, 
+            )
+            if sched_dict is not None:
+                self.scheduler.load_state_dict(sched_dict)
         
         self.model_size = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Model parameters: {self.model_size}")
