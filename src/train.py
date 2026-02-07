@@ -447,7 +447,7 @@ class UNetTrainer(MetricsHistory):
                 self.optimizer, 
                 mode='max',
                 factor=0.85, 
-                patience=5, 
+                patience=20, 
             )
             if sched_dict is not None:
                 self.scheduler.load_state_dict(sched_dict)
