@@ -446,8 +446,8 @@ class UNetTrainer(MetricsHistory):
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 self.optimizer, 
                 mode='max',
-                factor=0.85, 
-                patience=20, 
+                factor=0.85,
+                patience=25, 
             )
             if sched_dict is not None:
                 self.scheduler.load_state_dict(sched_dict)
@@ -621,6 +621,8 @@ class UNetTrainer(MetricsHistory):
             
             if self.scheduler is not None:
                 self.scheduler.step(self.metrics[self.configer.model_config.get("checkpoints_metric")]['val'].avg)
+                print('lr_0:', self.optimizer.param_groups[0]["lr"])
+                print('lr_1:', self.optimizer.param_groups[1]["lr"])
 
             self.log_epoch_history(['train', 'val'])
             self.print_metrics(['train', 'val'])
