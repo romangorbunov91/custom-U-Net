@@ -446,8 +446,8 @@ class UNetTrainer(MetricsHistory):
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 self.optimizer, 
                 mode='max',
-                factor=0.85,
-                patience=25, 
+                factor=0.9,
+                patience=30, 
             )
             if sched_dict is not None:
                 self.scheduler.load_state_dict(sched_dict)
