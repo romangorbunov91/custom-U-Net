@@ -18,5 +18,5 @@
   "backbone_block_size": 2,
   "encoder_base_lr": 0.0001,
   "backbone_pretrained": true,
-  "scheduler_on": true
+  "scheduler_on": false
 }
