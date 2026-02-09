@@ -401,8 +401,8 @@ class UNetTrainer(MetricsHistory):
             
             pretrained_flag = bool(self.configer.model_config['backbone_pretrained'])
             
-            backbone_checkpoints_file = Path(   self.configer.general_config['backbone_model_dir']) / \
-                                                self.configer.model_config['backbone_model_name']
+            backbone_checkpoints_file = Path(self.configer.general_config['backbone_model_dir']) / \
+                                             self.configer.model_config['backbone_model_name']
 
             self.net = customResNetUNet(
                 in_channels = mdl_input_size[0],
@@ -447,7 +447,7 @@ class UNetTrainer(MetricsHistory):
                 self.optimizer, 
                 mode='max',
                 factor=0.9,
-                patience=30, 
+                patience=int(0.6*self.configer.model_config['early_stop_number']), 
             )
             if sched_dict is not None:
                 self.scheduler.load_state_dict(sched_dict)
