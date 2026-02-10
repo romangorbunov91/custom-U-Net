@@ -447,7 +447,7 @@ class UNetTrainer(MetricsHistory):
                 self.optimizer, 
                 mode='max',
                 factor=0.9,
-                patience=int(0.6*self.configer.model_config['early_stop_number']), 
+                patience=self.configer.model_config['scheduler_patience']
             )
             if sched_dict is not None:
                 self.scheduler.load_state_dict(sched_dict)
