@@ -116,6 +116,11 @@ python -m src.main --hypes src\hyperparameters\customUNet-config.json --resume c
 
 ## Часть 3. U-Net с бэкбоном из классификатора
 
+Прописать отдельный запуск
+```
+python -m src.main --hypes src\hyperparameters\backbones\customResNet-config.json
+```
+
 num_classes = None - убирает голову модели.
 
 [customResNetUNet](src/models/customResNetUNet.py) в конфигурации:

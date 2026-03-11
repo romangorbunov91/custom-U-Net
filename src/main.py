@@ -28,7 +28,7 @@ def build_output_dict(
     model_param_count: int
 ) -> Dict[str, Any]:
 
-    # Build metadata generically.
+    # Build metadata.
     metadata = {
         "run_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "model": {
@@ -130,12 +130,12 @@ if __name__ == "__main__":
     with open(config_path, "r") as f:
         configer.general_config = json.load(f)
     
-    model_config_path = hyperparameters_dir / f"{configer.get('model_name')}-config.json"
+    model_config_path = hyperparameters_dir / f"{configer['model_name']}-config.json"
     assert model_config_path.exists(), f"Config not found: {model_config_path}"
     with open(model_config_path, "r") as f:
         configer.model_config = json.load(f)
     
-    dataset_config_path = hyperparameters_dir / f"{configer.get('dataset_name')}-config.json"
+    dataset_config_path = hyperparameters_dir / f"{configer['dataset_name']}-config.json"
     assert dataset_config_path.exists(), f"Config not found: {dataset_config_path}"
     with open(dataset_config_path, "r") as f:
         configer.dataset_config = json.load(f)
@@ -144,48 +144,19 @@ if __name__ == "__main__":
 
     configer.device = configer.general_config.get("device").lower() if torch.cuda.is_available() else 'cpu'
     
-    if configer.model_config.get('model_name') == "customResNet":
-        configer.output_file_name = (
-            f"{str(configer.model_config.get('model_name'))}"
-        )
-        '''
-        configer.output_file_name = (
-            f"{str(configer.model_config.get('model_name'))}_"
-            f"{str(configer.model_config.get('layers_num'))}x"
-            f"{str(configer.model_config.get('block_size'))}_"
-            f"classes_{str(len(configer.dataset_config.get('selected_classes')))}"
-        )
-        '''
-    elif configer.model_config.get('model_name') == "customUNet":
-        configer.output_file_name = (
-            f"{str(configer.model_config.get('model_name'))}"
-        )
-    elif configer.model_config.get('model_name') == "customResNetUNet":
-        
-        configer.output_file_name = str(configer.model_config['model_name'])
-        
-        if bool(configer.model_config['backbone_pretrained']):
-            configer.output_file_name += "_pretrained"
-
-        '''
-        backbone_name = str(configer.model_config.get('backbone_model_name'))
-        backbone_name_no_ext = Path(backbone_name).stem
-        configer.output_file_name = (
-            f"{str(configer.model_config.get('model_name'))}_"
-            f"backbone_{backbone_name_no_ext}_"
-            f"finetune_last_{str(configer.model_config.get('encoder_tune_epochs'))}_epochs"
-            )
-        '''
-    else:
-        raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
-
+    configer.output_file_name = (
+        f"{str(configer.model_config.get('model_name'))}"
+    )
+    if bool(configer.model_config.get('backbone_pretrained', None)):
+        configer.output_file_name += "_pretrained"
+                
     if configer.model_config.get('model_name') == "customResNet":
         trainer = ResNetTrainer(configer)
     elif (configer.model_config.get('model_name') == "customUNet") or \
         (configer.model_config.get('model_name') == "customResNetUNet"):
         trainer = UNetTrainer(configer)
     else:
-        raise NotImplementedError(f"Model not supported: {configer.model_config.get('model_name')}")
+        raise NotImplementedError(f"Model not supported: {configer.model_config['model_name']}")
     
     trainer.init_model()
     train_history, train_size, val_size, model_param_count = trainer.train()
